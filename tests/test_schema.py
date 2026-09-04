@@ -70,3 +70,7 @@ def test_provenance_rejects_missing_digest_and_import_fields():
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(d, PROV)
 
+
+
+def test_runtime_is_a_closed_enum():
+    d = copy.deepcopy(_load("internal-app.yaml")); d["spec"]["runtime"] = "node"; _invalid(d)

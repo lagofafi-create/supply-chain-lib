@@ -45,3 +45,13 @@ def test_root_source_is_flagged_and_path_defaulted():
     assert "WARNING: the source image runs as root" in df
     assert "USER 0" in df.splitlines()
     assert 'ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' in df
+
+
+def test_certs_are_installed_before_hardening_when_asked():
+    df = wrap.render("r@sha256:0", CFG, LABELS, certs=True, runtime="java", alias_prefix="acme-internal")
+    lines = df.splitlines()
+    assert "COPY certs/ /tmp/pki/" in lines
+    install = next(l for l in lines if "install-certs.sh" in l)
+    assert "--runtime java" in install and "CERT_ALIAS_PREFIX=acme-internal" in install
+    assert lines.index(install) < lines.index("RUN sh /usr/local/lib/hardening/harden.sh")
+    assert "install-certs" not in wrap.render("r@sha256:0", CFG, LABELS)

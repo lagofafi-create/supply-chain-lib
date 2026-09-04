@@ -77,7 +77,8 @@ To track several images, put one YAML per image in the directory and pass the di
 | `spec.destination.repo` | yes | Artifactory docker repo the result is published to |
 | `spec.destination.path` | yes | image path inside it (`vendor/jboss-eap`, `payments/api`) |
 | `spec.prodEligible` | no | `true`: the image is meant for production. The gate applies the full release rules, the tags get `quality.status=released`, the image is signed and attested. `false`: only the labels are checked, the tags get `quality.status=dev`, and the image is published unsigned, so admission can never deploy it. Default `false` |
-| `spec.harden` | no | `true` (internal only): run the uniform hardening and flatten. Default `false` |
+| `spec.harden` | no | `true` (internal only): inject the internal CA, run the uniform hardening and flatten. Default `false` |
+| `spec.runtime` | no | with `harden: true`, which runtime trust store also gets the internal CA: `auto` (detects a JVM or Python), `java`, `python`, `dotnet`, `none`. Default `auto` |
 | `spec.enabled` | no | `false`: the spec is skipped entirely, nothing runs, the tags already published stay as they are. A pause switch that keeps the file in place. Default `true` |
 | `spec.platforms` | yes | platforms to publish, e.g. `[linux/amd64]` |
 | `spec.labels.vendor` | yes | the distributing entity: the third party for a vendor image, our organisation for an internal one |
@@ -105,10 +106,12 @@ with the list of problems.
    manifest is copied into
    `<destination.repo>/<path>:_built-<version>-<digest12>`, all platforms preserved. Nothing is
    rebuilt, nothing is relabelled; the governance labels travel with the record.
-2. **Harden** (internal images with `harden: true`). The uniform `harden.sh` runs on your image,
-   the result is flattened to one layer, and your entrypoint, command, environment, user, working
-   directory, ports and volumes are re-emitted so the image still runs. The labels are baked in.
-   Your image needs a POSIX `sh` for this step.
+2. **Harden** (internal images with `harden: true`). The internal CA is installed in the OS trust
+   store and in the runtime's (JVM `cacerts` or Python certifi, detected unless `runtime` says),
+   the uniform `harden.sh` runs, the result is flattened to one layer, and your entrypoint,
+   command, environment, user, working directory, ports and volumes are re-emitted so the image
+   still runs. The labels are baked in. Your image needs a POSIX `sh` for this step. An image
+   imported as-is keeps the trust store it came with.
 3. **Provenance.** A `provenance.json` is written describing the import: source, digest, who
    imported it, and the hardening if any. It never claims to be your build.
 4. **Scan.** Vulnerability report and CycloneDX SBOM.

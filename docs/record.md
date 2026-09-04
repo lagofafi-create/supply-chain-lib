@@ -115,8 +115,9 @@ nothing is defaulted for them.
 
 ## `harden: true` (internal images)
 
-`hardenImage` runs the uniform `harden.sh` on the imported image in a wrap-build and flattens the
-result to one layer. Because the flatten discards the source config, the generated Dockerfile
+`hardenImage` installs the internal CA (`resources/certs/`, OS store plus the detected or declared
+`runtime` store), runs the uniform `harden.sh` on the imported image in a wrap-build and flattens
+the result to one layer. Because the flatten discards the source config, the generated Dockerfile
 re-emits ENV, WORKDIR, EXPOSE, VOLUME, STOPSIGNAL, ENTRYPOINT, CMD and USER from the image config
 read out of the registry, and bakes the validated governance labels in. The source must contain a
 POSIX `sh`. The record then carries `hardened: true`, `importedAsIs: false`, buildType

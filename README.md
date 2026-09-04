@@ -74,7 +74,8 @@ platform's, bound by the library itself.
 ## Configuration
 
 `resources/config/supply-chain.yaml` holds platform values only: registry host, organisation
-name, pull-through map, Supply Chain API url and token credential id, work root. Nothing a consumer
+name, pull-through map, Supply Chain API url and token credential id, the internal CA files to
+inject when hardening, work root. Nothing a consumer
 should decide is defaulted there: credential id, labels, platforms and notify address come from the
 consumer's Jenkinsfile and spec, and are simply absent when not given. Overrides, later wins:
 `config/registry.yaml` + `config/defaults.yaml` in the job's workspace → the file named by env
@@ -99,7 +100,7 @@ Compatibility surface (semver): the record fields, the step signatures, the gate
 ```
 vars/          the steps (acquireImage, hardenImage, scanImage, gateImage, publishImage, signImage,
                writeProvenance, supplyChain, supplyChainPipeline, scConfig, scLogin, scProps, scSpecs, scNotify)
-resources/     config/supply-chain.yaml · policy/gate.rego (+ tests) · hardening/{harden.sh,install-certs.sh,wrap.py}
+resources/     config/supply-chain.yaml · certs/ (internal CA) · policy/gate.rego (+ tests) · hardening/{harden.sh,install-certs.sh,wrap.py}
                · slsa/provenance.input*.json (the provenance.json contract)
 schema/        imageimport.schema.json     examples/  jboss-eap.yaml · internal-app.yaml · Jenkinsfile.consumer
 tests/         run.sh (pytest + opa + shellcheck)      docs/consumer-guide.md · docs/record.md

@@ -3,13 +3,13 @@
 # runtime-specific trust store. Runs BEFORE harden.sh (which removes the tools
 # below). Runtime-aware because Java and Python do not use the OS store by default.
 #
-# Usage: install-certs.sh [--runtime python|java|dotnet|none] <cert-name> [cert-name...]
+# Usage: install-certs.sh [--runtime auto|python|java|dotnet|none] <cert-name> [cert-name...]
 # Certs are read from /tmp/pki/*.crt (copied in by the Dockerfile). A file may contain
 # MULTIPLE PEM certs (root + intermediate bundle), it is split so every cert lands in
 # every store (keytool/openssl-hashdir only take the first cert of a file otherwise).
 set -eu
 
-RUNTIME=none
+RUNTIME=auto
 while [ "${1:-}" = "--runtime" ]; do RUNTIME="$2"; shift 2; done
 
 CERT_DIR=/tmp/pki
@@ -63,6 +63,13 @@ if [ "$OS_OK" != 1 ]; then
 fi
 
 # 2. runtime-specific trust store ---------------------------------------
+# auto: look at what the image ships rather than being told
+if [ "$RUNTIME" = auto ]; then
+  if command -v keytool >/dev/null 2>&1 || [ -f "${JAVA_HOME:-/nonexistent}/lib/security/cacerts" ]; then RUNTIME=java
+  elif command -v python3 >/dev/null 2>&1; then RUNTIME=python
+  else RUNTIME=none; fi
+  log "runtime detected: $RUNTIME"
+fi
 case "$RUNTIME" in
   java)
     KS="${JAVA_HOME:-}/lib/security/cacerts"

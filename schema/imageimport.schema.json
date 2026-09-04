@@ -149,6 +149,16 @@
       "vendor",
       "description"
      ]
+    },
+    "runtime": {
+     "enum": [
+      "auto",
+      "java",
+      "python",
+      "dotnet",
+      "none"
+     ],
+     "description": "with harden: true, which runtime trust store gets the internal CA besides the OS store. auto detects keytool/cacerts (java) or python3 (python)."
     }
    },
    "if": {

@@ -52,6 +52,7 @@ def call(Object spec) {
         name         : "${s.destPath}:${version}",
         origin       : s.origin,
         harden       : s.harden,
+        runtime      : s.runtime,
         importedAsIs : !s.harden,
         hardened     : false,
         prodEligible : s.prodEligible,
@@ -93,6 +94,7 @@ private Map normalise(Map doc) {
         destPath    : (sp.destination?.path ?: ''),
         prodEligible: (sp.prodEligible ?: false),
         harden      : (sp.harden ?: false),
+        runtime     : (sp.runtime ?: 'auto'),
         platforms   : (sp.platforms ?: []),
         labels      : (sp.labels ?: [:]),
         auid        : (doc.metadata?.auid ?: ''),
@@ -114,6 +116,7 @@ private List validateSpec(Map doc, Map s) {
     if (!s.auid) p << "metadata.auid is required"
     if (!(s.category in CATEGORIES)) p << "metadata.category must be one of ${CATEGORIES}"
     if (s.origin == 'vendor' && s.harden) p << "vendor images are never hardened: spec.harden must be false"
+    if (!(s.runtime in ['auto', 'java', 'python', 'dotnet', 'none'])) p << "spec.runtime must be auto, java, python, dotnet or none"
     if (!(s.platforms instanceof List) || !s.platforms) p << "spec.platforms is required (e.g. [linux/amd64])"
     return p
 }

@@ -15,6 +15,7 @@ spec:
     path: payments/api
   prodEligible: true
   harden: true
+  runtime: auto                          # trust store for the internal CA: auto, java, python, dotnet, none
   enabled: true
   platforms: [linux/amd64]
   labels:                              # source and revision default to the Jenkins checkout (GIT_URL, GIT_COMMIT) unless set here

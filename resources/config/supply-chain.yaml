@@ -24,3 +24,7 @@ credentials:
   api: supply-chain-api-token       # secret text credential: platform bearer token for the API
 
 workRoot: .supplychain
+
+# internal CA files under resources/certs/ (without .crt), injected by hardenImage
+certs: [internal-ca-bundle]
+certAliasPrefix: acme-internal      # keytool alias prefix in JVM cacerts (<prefix>-<n>)
