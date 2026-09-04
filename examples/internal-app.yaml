@@ -17,5 +17,5 @@ spec:
   harden: true
   enabled: true
   platforms: [linux/amd64]
-  labels:                              # source and revision come from the image's own labels unless set here
+  labels:                              # source and revision default to the Jenkins checkout (GIT_URL, GIT_COMMIT) unless set here
     description: "Payments API 1.8.2, imported from the app pipeline, hardened, scanned and signed"
