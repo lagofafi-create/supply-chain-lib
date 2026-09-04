@@ -12,7 +12,7 @@ def call(Map rec) {
     sh "docker buildx imagetools create --tag ${rec.stagingRef.replace(':_built-', ':_ok-')} ${rec.stagingRef}"
     echo "published ${tags.size()} tags (immutable=${immutable})"
 
-    def props = (["quality.status=${rec.qualityStatus ?: 'builder'}"] +
+    def props = (["quality.status=${rec.qualityStatus ?: 'dev'}"] +
                  (rec.catalogProps ?: [:]).collect { k, v -> "${k}=${v}" }).join(';')
     scProps(immutable, props)
 

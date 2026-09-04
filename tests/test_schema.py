@@ -27,10 +27,14 @@ def test_every_example_is_valid():
         jsonschema.validate(yaml.safe_load(open(f)), SCHEMA)
 
 
-def test_mandatory_labels_and_auid_are_required():
-    d = copy.deepcopy(_load("jboss-eap.yaml")); del d["spec"]["labels"]["description"]; _invalid(d)
+def test_auid_and_destination_are_required():
     d = copy.deepcopy(_load("jboss-eap.yaml")); del d["metadata"]["auid"]; _invalid(d)
     d = copy.deepcopy(_load("jboss-eap.yaml")); del d["spec"]["destination"]; _invalid(d)
+
+
+def test_labels_may_be_left_to_detection():
+    d = copy.deepcopy(_load("internal-app.yaml")); d["spec"].pop("labels")
+    jsonschema.validate(d, SCHEMA)
 
 
 def test_vendor_cannot_be_hardened_but_internal_can():
@@ -64,9 +68,3 @@ def test_provenance_rejects_missing_digest_and_import_fields():
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(d, PROV)
 
-
-def test_verify_attestations_is_a_string_list():
-    d = copy.deepcopy(_load("internal-app.yaml"))
-    assert d["spec"]["source"]["verify"]["attestations"]
-    d["spec"]["source"]["verify"]["attestations"] = "slsa"
-    _invalid(d)

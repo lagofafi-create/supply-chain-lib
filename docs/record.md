@@ -27,7 +27,7 @@ what makes the supply-chain steps reusable outside this repo (see *Consumers* at
 | `gateSkip` | producer | gate | reason string → skip the policy evaluation (debug toolboxes only) |
 | `workdir`, `stagingRef`, `imageDigest`, `serial`, `platforms`, `skipped` | producer | all | staging manifest `<repo>.<registry>/<path>:_built-<serial>` |
 | `tagPlan` | producer | publish | `[immutable, floating…]` — factory: `scripts/naming.py`; imports: `<path>:<version>-<digest12>`, `<path>:<version>` |
-| `qualityStatus`, `catalogProps` | producer | publish | `released` / `builder` / `debug` (+ `quarantine` on deny) and the catalog properties |
+| `qualityStatus`, `catalogProps` | producer | publish | `released` (prod eligible, gate passed), `dev` (imports not eligible for production), `builder` / `debug` (factory), `quarantine` on deny; plus the catalog properties |
 | `buildType`, `workflow`, `baseImage`, `importInfo` | producer | provenance, sign | `bisp-base-image` / `bisp-runtime-image` / `bisp-image-import`; the flavor block; the import block |
 | `provenance` | `writeProvenance` | sign | path of `provenance.json` |
 | `sbom`, `scanReport`, `scan{available,criticalCount,highCount}` | `scanImage` | gate, sign | scanner outputs |
@@ -62,17 +62,16 @@ spec:
   source:
     ref: registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15
     digest: ""                       # empty = resolve live on every run (tracking mode)
-    verify: { signature: false, attestations: [] }   # verifySignature / getAttestations via the Supply Chain API
   version: "7.4.15"                  # default = the source tag
   destination: { repo: base-images-docker-local, path: vendor/jboss-eap }
   prodEligible: true
   harden: false                      # internal only (vendor + harden is rejected)
   enabled: true
-  labels:                            # mandatory: vendor, description, source
-    vendor: "Red Hat"
-    description: "JBoss EAP 7.4 — imported, scanned, signed; not hardened"
+  labels:                            # description always; vendor for vendor images; source, revision,
+    vendor: "Red Hat"                #   version are read from the image labels unless set here
+    description: "JBoss EAP 7.4, imported, scanned, signed, not hardened"
     source: "https://catalog.redhat.com/software/containers/..."
-    licenses: "..."                  # optional: authors, documentation, licenses, version, revision
+    licenses: "..."                  # optional: authors, documentation, licenses
 ```
 
 | `origin` | hardening | `labels.vendor` | category |
@@ -81,7 +80,11 @@ spec:
 | `internal` | optional (`harden: true` → wrap-build, `hardenImage`) | defaults to ours | author's choice |
 
 Derived by the pipeline, never written by the author: `base.name` (source ref), `base.digest`
-(resolved digest), `created` (import time). The staging tag is `_built-<version>-<digest12>`; the
+(resolved digest), `created` (import time). Read from the image's own OCI labels when present and
+overridable in the spec: `source`, `revision`, `version` (the job log lists what was detected;
+inherited base image labels show up there too, override them when they are wrong). After
+`signImage`, `verifyPublished` asks the Supply Chain API to confirm the signature and the SLSA and
+SBOM attestations on the published digest (skipped while `api.enabled` is false). The staging tag is `_built-<version>-<digest12>`; the
 published tags are `<path>:<version>-<digest12>` (immutable) and `<path>:<version>` (floating).
 What is published is the **exact** source manifest (registry-side copy, all platforms); the labels
 travel on the record and in provenance, the image is not relabelled. Provenance describes the

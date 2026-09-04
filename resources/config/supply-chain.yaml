@@ -6,8 +6,9 @@ credentials:
   docker: artifactory-docker
   api: supply-chain-api-token       # secret text credential: bearer token for the Supply Chain API
 
-# Supply Chain API (signature verification, attestations, gate). SC_API_URL overrides the url.
+# Supply Chain API (signature verification, attestations, gate). Off until wired; SC_API_URL overrides the url.
 api:
+  enabled: false
   url: https://supply-chain.acme/api
 
 # default docker repo: registry logins and legacy VendorImageImport specs

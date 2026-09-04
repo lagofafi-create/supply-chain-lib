@@ -5,7 +5,7 @@ the base-image factory built it or not: a vendor image tracked from an upstream 
 NGINX…), or an application image another team's pipeline built.
 
 ```
-acquireImage(spec) ─▶ [hardenImage] ─▶ writeProvenance ─▶ scanImage ─▶ gateImage ─▶ publishImage ─▶ signImage
+acquireImage(spec) ─▶ [hardenImage] ─▶ writeProvenance ─▶ scanImage ─▶ gateImage ─▶ publishImage ─▶ signImage ─▶ verifyPublished
 ```
 
 The factory (`base-images-pipeline`) is this library's first consumer: its `buildImage` produces the
@@ -34,13 +34,15 @@ spec:
   labels: { vendor: "Red Hat", description: "...", source: "https://catalog.redhat.com/..." }
 ```
 
-What happens: the spec is validated (schema shape + the mandatory governance labels — `auid`,
-`category`, `vendor`, `description`, `source`; `base.name`, `base.digest`, `created` are derived) →
-the source is digest-pinned through the Artifactory pull-through map (optionally signature-verified)
-→ copied exactly into `<destination.repo>/<path>:_built-<version>-<digest12>` → optionally hardened
-→ provenance written → scanned (SBOM + vuln report) → policy gate → published as
-`<path>:<version>-<digest12>` (immutable) + `<path>:<version>` (floating) with `quality.status` →
-signed + attested (SLSA provenance of the **import**, CycloneDX SBOM).
+What happens: the spec is validated (`auid`, `category`, `description`, and `vendor` for vendor
+images come from the spec; `source`, `revision`, `version` are read from the image's own labels
+unless the spec overrides them; `base.name`, `base.digest`, `created` are derived) → the source is
+digest-pinned through the Artifactory pull-through map → copied exactly into
+`<destination.repo>/<path>:_built-<version>-<digest12>` → optionally hardened → provenance written
+→ scanned (SBOM + vuln report) → policy gate → published as `<path>:<version>-<digest12>`
+(immutable) + `<path>:<version>` (floating) with `quality.status` → signed + attested (SLSA
+provenance of the **import**, CycloneDX SBOM) → signature and attestations verified on the
+published digest through the Supply Chain API.
 
 | `origin` | hardening | `labels.vendor` |
 |---|---|---|
@@ -50,13 +52,12 @@ signed + attested (SLSA provenance of the **import**, CycloneDX SBOM).
 New here? Start with the [consumer guide](docs/consumer-guide.md). Full field reference and the
 record contract: [docs/record.md](docs/record.md).
 
-## Verifying the source
+## Verifying what was published
 
-`source.verify.signature: true` calls `verifySignature` on the pinned source digest before anything
-is copied; `source.verify.attestations: [<predicate types>]` calls `getAttestations` and refuses the
-import if one is missing. Both go through the Supply Chain API (curl placeholders in the steps,
-`api.url` and `credentials.api` in the config). Until the API is wired a requested verification
-fails, so nothing is ever imported as verified by accident.
+Nothing is signed before it goes through this pipeline, so verification happens at the end:
+`verifyPublished` calls `verifySignature` and `getAttestations` on the published digest and fails
+the job if the signature or the SLSA and SBOM attestations are missing. Both call the Supply Chain
+API (`api.url`, token in `credentials.api`) and are skipped while `api.enabled` is false.
 
 ## Credentials
 
@@ -107,6 +108,6 @@ tests/         run.sh (pytest + opa + shellcheck)      docs/consumer-guide.md ·
 
 ## Placeholders to wire
 
-`scanImage` (Trivy or `scs scan`), `gateImage` (`scs gate` — policy + CTI on the Supply Chain API;
-local opa is the interim path), `acquireImage` (`scs verify`), `signImage` (`scs sign` / `scs attest`).
-Each is a marked block; the inputs/outputs around them are fixed.
+`scanImage` (Trivy or `scs scan`), `gateImage` (`scs gate`, policy and CTI on the Supply Chain API;
+local opa is the interim path), `signImage` (`scs sign` / `scs attest`), and the API calls in
+`verifySignature` / `getAttestations` (guarded by `api.enabled`, endpoints to confirm).

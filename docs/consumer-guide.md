@@ -43,7 +43,6 @@ spec:
   source:
     ref: registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15
     digest: ""
-    verify: { signature: false }
   version: "7.4.15"
   destination:
     repo: base-images-docker-local
@@ -72,31 +71,34 @@ To track several images, put one YAML per image in the directory and pass the di
 | `spec.origin` | yes | `vendor` for a third party image, `internal` for one built by our pipelines |
 | `spec.source.ref` | yes | the image to import. Upstream hosts are rewritten through the pull-through map, refs on our Artifactory pass through |
 | `spec.source.digest` | no | `sha256:...` to pin. Empty means the live digest is resolved on every run (tracking mode) |
-| `spec.source.verify.signature` | no | `true`: the source must carry a valid signature, checked through the Supply Chain API before anything is copied |
-| `spec.source.verify.attestations` | no | predicate types the source must carry, e.g. `https://slsa.dev/provenance/v1` |
 | `spec.version` | no | the tag base. Defaults to the source tag; required when the source is a digest ref |
 | `spec.destination.repo` | yes | Artifactory docker repo the result is published to |
 | `spec.destination.path` | yes | image path inside it (`vendor/jboss-eap`, `payments/api`) |
-| `spec.prodEligible` | no | `true`: the image may be released (target `release` at the gate). Default `false` |
+| `spec.prodEligible` | no | `true`: the image is meant for production. The gate applies the full release rules and the published tags get `quality.status=released`. `false`: only the labels are checked and the tags get `quality.status=dev`, usable outside production only. Default `false` |
 | `spec.harden` | no | `true` (internal only): run the uniform hardening and flatten. Default `false` |
-| `spec.enabled` | no | `false` skips the spec. Default `true` |
+| `spec.enabled` | no | `false`: the spec is skipped entirely, nothing runs, the tags already published stay as they are. A pause switch that keeps the file in place. Default `true` |
 | `spec.platforms` | no | platforms to publish. Default from config (`linux/amd64`) |
 | `spec.labels.vendor` | vendor: yes | the distributing entity. Internal images default to Acme |
 | `spec.labels.description` | yes | what the image is |
-| `spec.labels.source` | yes | URL with more information on the image |
-| `spec.labels.authors`, `documentation`, `licenses`, `version`, `revision` | no | optional governance labels |
+| `spec.labels.source` | if the image has none | URL of the source. Read from the image's `org.opencontainers.image.source` label when present |
+| `spec.labels.revision`, `version` | no | read from the image's labels when present; set them here to override |
+| `spec.labels.authors`, `documentation`, `licenses` | no | optional governance labels |
 
 Three mandatory labels are filled by the pipeline, never by you: `base.name` is the source ref,
-`base.digest` the resolved digest, `created` the import time.
+`base.digest` the resolved digest, `created` the import time. Source, revision and version are read
+off the image itself; the job log prints what was found. Images built on a golden base inherit the
+base's labels, so if the log shows the base's source instead of yours, set `labels.source` and
+`labels.revision` in the spec and they win.
 
-The spec is validated before anything touches a registry. A missing mandatory label, an unknown
-`origin`, a vendor image with `harden: true`, or a vendor image whose `vendor` label says Acme all
-stop the job with the list of problems.
+The spec's shape is checked before anything touches a registry; the label set is checked once the
+image's own labels are known. An unknown `origin`, a vendor image with `harden: true`, a missing
+description, a vendor image whose `vendor` label says Acme, or no source anywhere all stop the job
+with the list of problems.
 
 ## 4. What happens to your image
 
-1. **Acquire.** The source is resolved through Artifactory and pinned to a digest. If you asked for
-   it, the signature and the attestations are verified. The exact manifest is copied into
+1. **Acquire.** The source is resolved through Artifactory and pinned to a digest, its source,
+   revision and version labels are read. The exact manifest is copied into
    `<destination.repo>/<path>:_built-<version>-<digest12>`, all platforms preserved. Nothing is
    rebuilt, nothing is relabelled; the governance labels travel with the record.
 2. **Harden** (internal images with `harden: true`). The uniform `harden.sh` runs on your image,
@@ -112,9 +114,12 @@ stop the job with the list of problems.
    quarantined in staging and the job fails with the reasons; nothing is published.
 6. **Publish.** Two tags on the same digest: `<path>:<version>-<digest12>` (immutable, pin this in
    production) and `<path>:<version>` (floating, moves on the next import). The `quality.status`
-   property is set to `released` or `builder`.
+   property is `released` when `prodEligible` is true, `dev` otherwise.
 7. **Sign.** The published tag is signed and the SLSA provenance and SBOM are attached as
-   attestations. Deploy-time admission verifies them.
+   attestations.
+8. **Verify.** The Supply Chain API is asked to confirm the signature and both attestations on the
+   published digest. Nothing is signed before this pipeline, so this is the only place a signature
+   is checked. Deploy-time admission verifies them again.
 
 ## 5. Vendor or internal
 
@@ -143,8 +148,7 @@ stop the job with the list of problems.
 |---|---|---|
 | `ImageImport '<name>' rejected:` followed by a list | spec validation | fix the listed fields |
 | `could not resolve a digest for <ref>` | the source is not reachable through Artifactory | check the ref and the pull-through map; ask for a remote if the registry has none |
-| `verifySignature: Supply Chain API not wired` | you asked for verification and the API is not connected yet | set `verify.signature: false` for now, or wait for the platform team |
-| `lacks required attestations` | the source does not carry the predicate types you required | check with the team that built the image |
+| `signature verification failed` or `is missing attestations` | the published digest is not signed or attested as expected | the platform team checks the signing service; nothing to change in your spec |
 | `Policy gate DENY for <name> [release]: [...]` | the gate refused release | read the reasons: CVEs to fix upstream, missing SBOM, missing labels. Set `prodEligible: false` to publish a non-release image meanwhile |
 | `harden.sh: not found` or the wrap build fails at `RUN sh` | the source has no shell | hardening needs a POSIX `sh`; set `harden: false` |
 | `no enabled ImageImport spec found at <path>` | wrong `spec:` path or every spec is `enabled: false` | check the path in the Jenkinsfile |

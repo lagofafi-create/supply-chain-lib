@@ -1,5 +1,5 @@
 // The whole chain for one imported image. Provenance is written after hardening so it carries
-// the digest that gets published. Locked per destination path.
+// the digest that gets published; verification runs last, on the published digest.
 def call(Object spec) {
     def s
     if (spec instanceof CharSequence) {
@@ -13,7 +13,7 @@ def call(Object spec) {
     def key = (doc.spec?.destination?.path ?: "vendor/${doc.metadata?.name}").toString().replaceAll('[^A-Za-z0-9._-]', '-')
     def out = null
     lock("sc-${key}") {
-        out = signImage(publishImage(gateImage(scanImage(writeProvenance(hardenImage(acquireImage(s)))))))
+        out = verifyPublished(signImage(publishImage(gateImage(scanImage(writeProvenance(hardenImage(acquireImage(s))))))))
     }
     return out
 }

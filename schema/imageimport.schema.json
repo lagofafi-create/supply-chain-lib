@@ -50,8 +50,7 @@
    "required": [
     "origin",
     "source",
-    "destination",
-    "labels"
+    "destination"
    ],
    "properties": {
     "origin": {
@@ -74,22 +73,6 @@
       "digest": {
        "type": "string",
        "description": "sha256:... to pin; empty = resolve the live digest on every run (tracking mode)"
-      },
-      "verify": {
-       "type": "object",
-       "properties": {
-        "signature": {
-         "type": "boolean",
-         "description": "require a valid signature on the source before importing"
-        },
-        "attestations": {
-         "type": "array",
-         "items": {
-          "type": "string"
-         },
-         "description": "predicate types the source must carry (e.g. https://slsa.dev/provenance/v1); checked through the Supply Chain API"
-        }
-       }
       }
      }
     },
@@ -132,11 +115,7 @@
     },
     "labels": {
      "type": "object",
-     "required": [
-      "description",
-      "source"
-     ],
-     "description": "governance labels (docs/reference/governance-labels.md). Mandatory here: description, source, and vendor for origin: vendor (defaults to ours for internal). Optional: authors, documentation, licenses, version, revision.",
+     "description": "governance labels. description is mandatory; source, revision and version are read from the image's OCI labels when present and any value here overrides them; vendor is mandatory for origin: vendor and defaults to ours for internal. Optional: authors, documentation, licenses.",
      "properties": {
       "vendor": {
        "type": "string"
@@ -176,11 +155,6 @@
     "properties": {
      "harden": {
       "const": false
-     },
-     "labels": {
-      "required": [
-       "vendor"
-      ]
      }
     }
    }

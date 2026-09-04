@@ -32,7 +32,11 @@
     "sourceRef": "registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15",
     "resolvedFrom": "redhat-io-remote.artifactory.acme/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15",
     "sourceDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    "signatureVerified": false,
+    "sourceRepo": "https://catalog.redhat.com/software/containers/jboss-eap-7/eap74-openjdk17-openshift-rhel8",
+    "sourceRevision": "",
+    "detectedLabels": [
+      "version"
+    ],
     "importedBy": "https://jenkins.acme/job/payments-supply-chain/17/",
     "harden": false
   }

@@ -9,7 +9,6 @@ spec:
   source:
     ref: registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15
     digest: ""                           # empty: resolve the live digest on every run
-    verify: { signature: false }
   version: "7.4.15"
   destination:
     repo: base-images-docker-local
