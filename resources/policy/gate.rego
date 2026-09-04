@@ -39,6 +39,8 @@ mandatory := {
 	"org.opencontainers.image.description",
 	"org.opencontainers.image.source",
 	"org.opencontainers.image.vendor",
+	"org.opencontainers.image.os",
+	"org.opencontainers.image.os.version",
 	"acme.container.governance.image.auid",
 	"acme.container.governance.image.category",
 }
