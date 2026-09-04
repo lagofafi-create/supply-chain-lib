@@ -88,8 +88,9 @@ unless the spec sets them: `source` (the repository URL) and `revision` (the com
 `signImage`, `verifyPublished` asks the Supply Chain API to confirm the signature and the SLSA and
 SBOM attestations on the published digest (skipped while `api.enabled` is false). The staging tag is `_built-<version>-<digest12>`; the
 published tags are `<path>:<version>-<digest12>` (immutable) and `<path>:<version>` (floating).
-What is published is the **exact** source manifest (registry-side copy, all platforms); the labels
-travel on the record and in provenance, the image is not relabelled. Provenance describes the
+The source manifest is copied exactly (registry-side, all platforms) into staging, then rebuilt once:
+hardened (`hardenImage`) or config-only (`labelImage`: `FROM` the digest plus `LABEL` lines, layers
+untouched), so the governance labels are in the published image as well as on the record. Provenance describes the
 import (`import` block), never a build.
 
 ## Where the steps live: two libraries

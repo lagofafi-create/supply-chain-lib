@@ -105,33 +105,35 @@ with the list of problems.
 
 ## 4. What happens to your image
 
-1. **Acquire.** The source is resolved through Artifactory and pinned to a digest. The exact
-   manifest is copied into
-   `<destination.repo>/<path>:_built-<version>-<digest12>`, all platforms preserved. Nothing is
-   rebuilt, nothing is relabelled; the governance labels travel with the record.
+1. **Acquire.** The source is resolved through Artifactory and pinned to a digest, its OS is read
+   from `/etc/os-release`. The exact manifest is copied into
+   `<destination.repo>/<path>:_built-<version>-<digest12>`, all platforms preserved.
 2. **Harden** (internal images with `harden: true`). The internal CA is installed in the OS trust
    store and in the runtime's (JVM `cacerts` or Python certifi, detected unless `runtime` says),
    the uniform `harden.sh` runs, the result is flattened to one layer, and your entrypoint,
    command, environment, user, working directory, ports and volumes are re-emitted so the image
    still runs. The labels are baked in. Your image needs a POSIX `sh` for this step. An image
    imported as-is keeps the trust store it came with.
-3. **Provenance.** A `provenance.json` is written describing the import: source, digest, who
+3. **Label.** An image that is not hardened is rebuilt once, config only: `FROM` the pinned
+   digest plus the governance labels, no command runs. Its layers stay exactly the source's, only
+   the image config changes, so `docker inspect` on the published image shows every label.
+4. **Provenance.** A `provenance.json` is written describing the import: source, digest, who
    imported it, and the hardening if any. It never claims to be your build.
-4. **Scan.** Vulnerability report and CycloneDX SBOM.
-5. **Gate.** The policy decision, evaluated locally: all mandatory labels on every image (the
+5. **Scan.** Vulnerability report and CycloneDX SBOM.
+6. **Gate.** The policy decision, evaluated locally: all mandatory labels on every image (the
    governance eight plus `os` and `os.version`); at
    `release` also a completed scan, an SBOM, hardening (vendor images and internal images that
    opted out are accepted as they are), no dev CA. The CVE verdict and the CTI score come from
    the Supply Chain API and are merged into the same decision (interim thresholds apply until it
    is wired: no critical, high under the threshold). A denied image is quarantined in staging and
    the job fails with the reasons; nothing is published.
-6. **Publish.** Two tags on the same digest: `<path>:<version>-<digest12>` (immutable, pin this in
+7. **Publish.** Two tags on the same digest: `<path>:<version>-<digest12>` (immutable, pin this in
    production) and `<path>:<version>` (floating, moves on the next import). The `quality.status`
    property is `released` when `prodEligible` is true, `dev` otherwise.
-7. **Sign.** Prod eligible images only: the published tag is signed and the SLSA provenance and
+8. **Sign.** Prod eligible images only: the published tag is signed and the SLSA provenance and
    SBOM are attached as attestations. A `prodEligible: false` image is published unsigned, which is
    exactly what keeps it out of production.
-8. **Verify.** The Supply Chain API is asked to confirm the signature and both attestations on the
+9. **Verify.** The Supply Chain API is asked to confirm the signature and both attestations on the
    published digest. Nothing is signed before this pipeline, so this is the only place a signature
    is checked. Deploy-time admission verifies them again.
 
@@ -176,7 +178,8 @@ with the list of problems.
 credential as `AF_USER` and `AF_PASS`, call `scLogin()` and then `supplyChain('supplychain/x.yaml')`
 inside a `script` block. You get the same stages.
 
-**Where do I see the results?** The job log lists the published tags and the signed ref. In
+**Where do I see the results?** The job log lists the published tags and the signed ref.
+`docker inspect --format '{{json .Config.Labels}}' <published tag>` shows the governance labels. In
 Artifactory, the immutable tag carries `quality.status` and the catalog properties. The
 `provenance.json`, `sbom.json`, `scan.json` and `gate-input.json` are in the job workspace under
 `.supplychain/<name>/`.

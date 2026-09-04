@@ -1,6 +1,7 @@
 // Bring an image we did not build into the supply chain: check the spec, pin the source digest,
 // take source and revision from the Jenkins checkout (the spec overrides them), copy the exact
-// manifest into the destination repo's staging tag, build the record.
+// manifest into the destination repo's staging tag, build the record. labelImage or hardenImage
+// then writes the labels into the image.
 def call(Object spec) {
     def file = (spec instanceof Map && spec.doc) ? spec.file : null
     def doc = (spec instanceof Map && spec.doc) ? spec.doc : spec

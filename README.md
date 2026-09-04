@@ -40,7 +40,8 @@ What happens: the spec is validated (`auid`, `category`, `platforms`, `descripti
 come from the spec; `source` and `revision` are the Jenkins checkout's URL and commit
 unless the spec overrides them; `base.name`, `base.digest`, `created` are derived) → the source is
 digest-pinned through the Artifactory pull-through map → copied exactly into
-`<destination.repo>/<path>:_built-<version>-<digest12>` → optionally hardened → provenance written
+`<destination.repo>/<path>:_built-<version>-<digest12>` → hardened, or rebuilt config-only so the
+labels are in the image (layers untouched) → provenance written
 → scanned (SBOM + vuln report) → policy gate → published as `<path>:<version>-<digest12>`
 (immutable) + `<path>:<version>` (floating) with `quality.status` → if prod eligible, signed +
 attested (SLSA provenance of the **import**, CycloneDX SBOM) and verified on the published digest
