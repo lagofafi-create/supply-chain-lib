@@ -7,7 +7,7 @@ def call(Map rec) {
     def ctx = "${rec.workdir}/label"
     sh "rm -rf ${ctx} && mkdir -p ${ctx}"
     def pinned = "${rec.stagingRef.replaceFirst(/:[^:\/]+$/, '')}@${rec.imageDigest}"
-    def lines = ["# syntax=docker/dockerfile:1.7", "FROM ${pinned}"]
+    def lines = ["FROM ${pinned}"]
     (rec.labels ?: [:]).sort().each { k, v -> lines << "LABEL ${q(k)}=${q(v)}" }
     writeFile file: "${ctx}/Dockerfile", text: lines.join('\n') + '\n'
 
