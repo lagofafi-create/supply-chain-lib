@@ -82,8 +82,9 @@ spec:
 | `internal` | optional (`harden: true` → wrap-build, `hardenImage`) | our organisation, written by the author | author's choice |
 
 Derived by the pipeline, never written by the author: `base.name` (source ref), `base.digest`
-(resolved digest), `created` (import time). Taken from the Jenkins checkout unless the spec sets
-them: `source` (the repository URL) and `revision` (the commit). After
+(resolved digest), `created` (import time). Read from the image's `/etc/os-release` unless the spec
+sets them: `os` and `os.version` (absent for scratch images). Taken from the Jenkins checkout
+unless the spec sets them: `source` (the repository URL) and `revision` (the commit). After
 `signImage`, `verifyPublished` asks the Supply Chain API to confirm the signature and the SLSA and
 SBOM attestations on the published digest (skipped while `api.enabled` is false). The staging tag is `_built-<version>-<digest12>`; the
 published tags are `<path>:<version>-<digest12>` (immutable) and `<path>:<version>` (floating).

@@ -27,6 +27,9 @@ def call(Object spec) {
     sh "docker buildx imagetools create --tag ${stagingRef} ${srcRef}"
     def workdir = "${c.workRoot ?: '.supplychain'}/${s.name}"
     sh "mkdir -p ${workdir}"
+    def os = detectOs(srcRef, workdir)
+    def osName = gl.os ?: os.id ?: ''
+    def osVersion = gl.osVersion ?: os.version ?: ''
 
     def created = sh(script: 'date -u +%Y-%m-%dT%H:%M:%SZ', returnStdout: true).trim()
     def labels = [
@@ -41,6 +44,8 @@ def call(Object spec) {
         'org.opencontainers.image.licenses'       : (gl.licenses ?: ''),
         'org.opencontainers.image.authors'        : (gl.authors ?: ''),
         'org.opencontainers.image.documentation'  : (gl.documentation ?: ''),
+        'org.opencontainers.image.os'             : osName,
+        'org.opencontainers.image.os.version'     : osVersion,
         'acme.container.governance.image.auid'    : s.auid,
         'acme.container.governance.image.category': s.category,
     ].findAll { it.value }
@@ -65,13 +70,29 @@ def call(Object spec) {
                         'catalog.prodEligible': s.prodEligible, 'catalog.origin': s.origin],
         buildType    : 'bisp-image-import',
         workflow     : (file ?: 'Jenkinsfile'),
-        baseImage    : [kind: 'imported-image', origin: s.origin, variant: 'imported'],
+        baseImage    : [kind: 'imported-image', origin: s.origin, variant: 'imported', os: osName, os_version: osVersion].findAll { it.value },
         importInfo   : [origin: s.origin, sourceRef: s.sourceRef, resolvedFrom: srcTagRef, sourceDigest: digest,
                         sourceRepo: gl.source, sourceRevision: (gl.revision ?: ''),
                         importedBy: (env.BUILD_URL ?: 'local'), harden: s.harden],
         workdir      : workdir, stagingRef: stagingRef, resolved: version, serial: digest12,
         baseDigest   : digest, imageDigest: digest, skipped: false,
     ]
+}
+
+// ID and VERSION_ID from the image's /etc/os-release, copied out of a stopped container: nothing
+// runs, so a missing shell does not matter. No file (scratch images) means no label.
+private Map detectOs(String ref, String wd) {
+    sh """rm -f ${wd}/os-release; cid=\$(docker create --entrypoint /os-release-probe ${ref}) && \\
+           { docker cp -L "\$cid:/etc/os-release" ${wd}/os-release 2>/dev/null || true; }; docker rm -f "\$cid" >/dev/null 2>&1 || true"""
+    if (!fileExists("${wd}/os-release")) { echo "os not detected (no /etc/os-release in ${ref})"; return [:] }
+    def out = [:]
+    readFile("${wd}/os-release").readLines().each { line ->
+        def l = line.trim()
+        if (l.startsWith('ID=')) out.id = l.substring(3).replaceAll(/^["']|["']\$/, '')
+        if (l.startsWith('VERSION_ID=')) out.version = l.substring(11).replaceAll(/^["']|["']\$/, '')
+    }
+    echo(out.id ? "os detected: ${out.id} ${out.version ?: ''}".trim() : "os not detected (no ID in /etc/os-release)")
+    return out
 }
 
 private static String tagOf(String ref) {

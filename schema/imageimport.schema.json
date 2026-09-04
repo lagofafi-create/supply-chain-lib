@@ -143,6 +143,14 @@
       },
       "revision": {
        "type": "string"
+      },
+      "os": {
+       "type": "string",
+       "description": "distribution id, detected from the image's /etc/os-release unless set here"
+      },
+      "osVersion": {
+       "type": "string",
+       "description": "distribution version, detected from the image's /etc/os-release unless set here"
       }
      },
      "required": [
