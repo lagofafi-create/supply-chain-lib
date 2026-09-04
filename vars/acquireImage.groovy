@@ -102,7 +102,7 @@ private Map normalise(Map doc) {
     ]
 }
 
-private static final List CATEGORIES = ['OS', 'MIDDLEWARE', 'DATABASE', 'BUSINESS_CUSTOMIZED', 'APPLICATION', 'OTHER']
+@groovy.transform.Field static final List CATEGORIES = ['OS', 'MIDDLEWARE', 'DATABASE', 'BUSINESS_CUSTOMIZED', 'APPLICATION', 'OTHER']
 
 // Checked before any registry call.
 private List validateSpec(Map doc, Map s) {

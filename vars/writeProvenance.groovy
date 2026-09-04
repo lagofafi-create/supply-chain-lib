@@ -39,15 +39,15 @@ def call(Map rec) {
     return rec + [provenance: "${rec.workdir}/provenance.json"]
 }
 
-private static final List REQUIRED = [
+@groovy.transform.Field static final List REQUIRED = [
     'imageSource.repo', 'imageSource.ref', 'imageSource.commit',
     'ci.provider', 'ci.workflow', 'ci.workflowName', 'ci.runId',
     'container.imageRepo', 'container.platform', 'container.digest',
     'customMetadata.owner_team', 'customMetadata.build_number', 'customMetadata.environment',
     'baseImage.kind',
 ]
-private static final List REQUIRED_IMPORT = ['import.origin', 'import.sourceRef', 'import.sourceDigest', 'import.importedBy']
-private static final List FALLBACKS = ['unknown', 'local', '0']
+@groovy.transform.Field static final List REQUIRED_IMPORT = ['import.origin', 'import.sourceRef', 'import.sourceDigest', 'import.importedBy']
+@groovy.transform.Field static final List FALLBACKS = ['unknown', 'local', '0']
 
 @NonCPS
 List missingFields(Map json) {
