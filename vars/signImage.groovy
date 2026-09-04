@@ -10,9 +10,9 @@ def call(Map rec) {
     def builderId = env.BUILD_URL ?: 'https://jenkins/supply-chain'
     (rec.signRefs ?: []).each { ref ->
         sh """
-            scs sign   --image ${ref}
+            scs sign   --image ${ref} --category ${rec.category ?: 'OTHER'}
             scs attest --image ${ref} --predicate slsaprovenance --provenance ${rec.provenance ?: wd + '/provenance.json'} \\
-                       --buildtype ${buildType} --builder-id '${builderId}'
+                       --buildtype ${buildType} --builder-id '${builderId}' --category ${rec.category ?: 'OTHER'}
             scs attest --image ${ref} --predicate cyclonedx      --sbom ${rec.sbom ?: wd + '/sbom.json'}
         """
         echo "signed and attested (${buildType}): ${ref}"

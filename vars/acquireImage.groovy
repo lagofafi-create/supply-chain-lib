@@ -49,6 +49,7 @@ def call(Object spec) {
         kind         : 'import',
         name         : "${s.destPath}:${version}",
         origin       : s.origin,
+        category     : s.category,
         harden       : s.harden,
         runtime      : s.runtime,
         importedAsIs : !s.harden,

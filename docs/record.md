@@ -20,6 +20,7 @@ what makes the supply-chain steps reusable outside this repo (see *Consumers* at
 | `kind` | producer | gate input | `os` / `runtime` / `debug` (built) or `import` |
 | `name` | producer | logs, errors | human-readable id (`python/runtime`, `vendor/jboss-eap:7.4.15`) |
 | `origin` | producer | gate input | `built` / `vendor` / `internal` |
+| `category` | producer | scan, sign (CLI `--category`) | the governance category: `OS`, `MIDDLEWARE`, `DATABASE`, `BUSINESS_CUSTOMIZED`, `APPLICATION`, `OTHER` |
 | `importedAsIs` | producer, `hardenImage` | gate | `true` = the supply chain did **not** harden this image |
 | `hardened` | producer, `hardenImage` | gate | `harden.sh` ran, or distroless by construction |
 | `prodEligible` | producer | gate (`target` = release / dev), `qualityStatus` | may reach release |

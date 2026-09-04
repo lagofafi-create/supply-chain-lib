@@ -1,7 +1,7 @@
 // Vulnerability scan plus SBOM. Placeholder output until the real scanner is wired:
 //   sh "trivy image --format cyclonedx --output ${wd}/sbom.json ${ref}"
 //   sh "trivy image --scanners vuln --format json --output ${wd}/scan.json ${ref}"
-// or: sh "scs scan --image ${ref} --sbom ${wd}/sbom.json --report ${wd}/scan.json"
+// or: sh "scs scan --image ${ref} --category ${rec.category} --sbom ${wd}/sbom.json --report ${wd}/scan.json"
 def call(Map rec) {
     if (rec.skipped) return rec
     def ref = rec.stagingRef
