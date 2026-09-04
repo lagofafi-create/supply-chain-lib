@@ -86,14 +86,14 @@ To track several images, put one YAML per image in the directory and pass the di
 | `spec.labels.source` | no | the repository the job runs from (`GIT_URL`) unless set here, e.g. a vendor's catalog page |
 | `spec.labels.revision` | no | the checkout commit (`GIT_COMMIT`) unless set here |
 | `spec.labels.version` | no | defaults to `spec.version` |
-| `spec.labels.os`, `osVersion` | no | the distribution and its version, read from the image's `/etc/os-release` unless set here; absent for scratch images |
+| `spec.labels.os`, `osVersion` | yes, unless detected | the distribution and its version, read from the image's `/etc/os-release`; a scratch image has none, so set them here (`os: scratch`) or the gate denies |
 | `spec.labels.authors` | no | the owning team; also recorded as the owner in provenance (the AUID otherwise) |
 | `spec.labels.documentation`, `licenses` | no | optional governance labels |
 
 Three mandatory labels are filled by the pipeline, never by you: `base.name` is the source ref,
 `base.digest` the resolved digest, `created` the import time. The OS and its version are read from
 the image's `/etc/os-release` (works for chiselled, UBI micro and distroless images; a scratch image
-has none, set `labels.os` yourself if you want them). Source and revision come from the
+has none, so set `labels.os` and `labels.osVersion` yourself, the gate requires both). Source and revision come from the
 repository the job runs from: the checkout URL and commit Jenkins provides. For an internal image
 that is your application repository, which is exactly what provenance should record. For a vendor
 image set `labels.source` to the vendor's page if you prefer; whatever you set in the spec wins.
@@ -118,7 +118,8 @@ with the list of problems.
 3. **Provenance.** A `provenance.json` is written describing the import: source, digest, who
    imported it, and the hardening if any. It never claims to be your build.
 4. **Scan.** Vulnerability report and CycloneDX SBOM.
-5. **Gate.** The policy decision, evaluated locally: all mandatory labels on every image; at
+5. **Gate.** The policy decision, evaluated locally: all mandatory labels on every image (the
+   governance eight plus `os` and `os.version`); at
    `release` also a completed scan, an SBOM, hardening (vendor images and internal images that
    opted out are accepted as they are), no dev CA. The CVE verdict and the CTI score come from
    the Supply Chain API and are merged into the same decision (interim thresholds apply until it

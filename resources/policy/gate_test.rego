@@ -12,6 +12,8 @@ _labels := {
 	"org.opencontainers.image.description": "x",
 	"org.opencontainers.image.source": "https://git/x",
 	"org.opencontainers.image.vendor": "Acme",
+	"org.opencontainers.image.os": "ubuntu",
+	"org.opencontainers.image.os.version": "22.04",
 	"acme.container.governance.image.auid": "AP1",
 	"acme.container.governance.image.category": "OS",
 	"acme.container.security.ca-source": "internal-pki",
@@ -73,4 +75,9 @@ test_devca_blocked_from_release if {
 
 test_dev_target_only_needs_labels if {
 	allow with input as {"target": "dev", "kind": "os", "hardened": false, "labels": _labels, "scan": {"available": false}, "sbomGenerated": false}
+}
+
+test_missing_os_labels_denied if {
+	count(deny) > 0 with input as json.remove(_release, ["labels/org.opencontainers.image.os"])
+	count(deny) > 0 with input as json.remove(_release, ["labels/org.opencontainers.image.os.version"])
 }

@@ -82,9 +82,11 @@ def call(Object spec) {
 // ID and VERSION_ID from the image's /etc/os-release, copied out of a stopped container: nothing
 // runs, so a missing shell does not matter. No file (scratch images) means no label.
 private Map detectOs(String ref, String wd) {
-    sh """rm -f ${wd}/os-release; cid=\$(docker create --entrypoint /os-release-probe ${ref}) && \\
-           { docker cp -L "\$cid:/etc/os-release" ${wd}/os-release 2>/dev/null || true; }; docker rm -f "\$cid" >/dev/null 2>&1 || true"""
-    if (!fileExists("${wd}/os-release")) { echo "os not detected (no /etc/os-release in ${ref})"; return [:] }
+    sh """rm -f ${wd}/os-release
+          cid=\$(docker create --entrypoint /os-release-probe ${ref}) || { echo "os detection: docker create failed for ${ref}"; exit 0; }
+          docker cp -L "\$cid:/etc/os-release" ${wd}/os-release || echo "os detection: no /etc/os-release in ${ref}"
+          docker rm -f "\$cid" >/dev/null 2>&1 || true"""
+    if (!fileExists("${wd}/os-release")) { echo "os not detected"; return [:] }
     def out = [:]
     readFile("${wd}/os-release").readLines().each { line ->
         def l = line.trim()
