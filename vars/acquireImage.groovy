@@ -88,8 +88,8 @@ private Map detectOs(String ref, String wd) {
     def out = [:]
     readFile("${wd}/os-release").readLines().each { line ->
         def l = line.trim()
-        if (l.startsWith('ID=')) out.id = l.substring(3).replaceAll(/^["']|["']\$/, '')
-        if (l.startsWith('VERSION_ID=')) out.version = l.substring(11).replaceAll(/^["']|["']\$/, '')
+        if (l.startsWith('ID=')) out.id = l.substring(3).replaceAll(/^["']|["']$/, '')
+        if (l.startsWith('VERSION_ID=')) out.version = l.substring(11).replaceAll(/^["']|["']$/, '')
     }
     echo(out.id ? "os detected: ${out.id} ${out.version ?: ''}".trim() : "os not detected (no ID in /etc/os-release)")
     return out
