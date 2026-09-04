@@ -1,0 +1,26 @@
+apiVersion: imagefactory.acme.dev/v1
+kind: ImageImport
+metadata:
+  name: payments-api
+  category: APPLICATION
+  auid: AP54321
+spec:
+  origin: internal
+  source:
+    ref: apps-docker-dev-local.artifactory.acme/payments/api:1.8.2
+    digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    verify:
+      signature: true
+      attestations: ["https://slsa.dev/provenance/v1", "https://cyclonedx.org/bom"]
+  version: "1.8.2"
+  destination:
+    repo: apps-docker-local
+    path: payments/api
+  prodEligible: true
+  harden: true
+  enabled: true
+  platforms: [linux/amd64]
+  labels:
+    description: "Payments API 1.8.2, imported from the app pipeline, hardened, scanned and signed"
+    source: "https://gitlab.acme/payments/api"
+    revision: "9a8b7c6d"

@@ -1,0 +1,26 @@
+apiVersion: imagefactory.acme.dev/v1
+kind: ImageImport
+metadata:
+  name: jboss-eap
+  category: MIDDLEWARE
+  auid: AP12345
+spec:
+  origin: vendor
+  source:
+    ref: registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15
+    digest: ""                           # empty: resolve the live digest on every run
+    verify: { signature: false }
+  version: "7.4.15"
+  destination:
+    repo: base-images-docker-local
+    path: vendor/jboss-eap
+  prodEligible: true
+  harden: false
+  enabled: true
+  platforms: [linux/amd64]
+  labels:
+    vendor: "Red Hat"
+    description: "JBoss EAP 7.4 on OpenJDK 17, imported, scanned and signed, not hardened"
+    source: "https://catalog.redhat.com/software/containers/jboss-eap-7/eap74-openjdk17-openshift-rhel8"
+    licenses: "LicenseRef-RedHat-EAP"
+    documentation: "https://access.redhat.com/documentation/en-us/red_hat_jboss_enterprise_application_platform/7.4"

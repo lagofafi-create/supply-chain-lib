@@ -1,0 +1,174 @@
+# Consumer guide: putting your image through the supply chain
+
+This library takes an image you already have, a vendor image from an upstream registry or one your
+own pipeline built, and runs it through the same supply chain as the golden base images: digest
+pinning, optional hardening, provenance, vulnerability scan with SBOM, policy gate, publication
+with immutable and floating tags, signature and attestations. You describe the image in one YAML
+file, your Jenkinsfile is two lines, and the platform team owns the rest.
+
+## 1. Before you start
+
+You need four things.
+
+| What | Why | Who provides it |
+|---|---|---|
+| The library registered in Jenkins as `supply-chain-lib` | your Jenkinsfile loads it with `@Library` | platform team |
+| A Jenkins credential (username and password) | the job logs in to Artifactory with it | you, in your folder, or ask the platform team |
+| A destination docker repo in Artifactory you can write to | that is where the gated image is published | your team's repo, or `base-images-docker-local` for vendor images |
+| A source that Artifactory can reach | upstream registries go through the pull-through remotes | check the `pull` map in the config; `registry.redhat.io` needs its own remote |
+
+The credential's account must read the source and write the destination repo. Secrets never go in
+the YAML.
+
+## 2. Setup in five minutes
+
+Add two files to your repository.
+
+`Jenkinsfile`:
+```groovy
+@Library('supply-chain-lib@v1') _
+supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'my-team-artifactory')
+```
+
+`supplychain/jboss-eap.yaml`:
+```yaml
+apiVersion: imagefactory.acme.dev/v1
+kind: ImageImport
+metadata:
+  name: jboss-eap
+  category: MIDDLEWARE
+  auid: AP12345
+spec:
+  origin: vendor
+  source:
+    ref: registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15
+    digest: ""
+    verify: { signature: false }
+  version: "7.4.15"
+  destination:
+    repo: base-images-docker-local
+    path: vendor/jboss-eap
+  prodEligible: true
+  harden: false
+  enabled: true
+  platforms: [linux/amd64]
+  labels:
+    vendor: "Red Hat"
+    description: "JBoss EAP 7.4 on OpenJDK 17, imported, scanned and signed, not hardened"
+    source: "https://catalog.redhat.com/software/containers/jboss-eap-7/eap74-openjdk17-openshift-rhel8"
+```
+
+Create a Pipeline job in Jenkins pointing at your repository (Pipeline script from SCM), run it.
+To track several images, put one YAML per image in the directory and pass the directory:
+`supplyChainPipeline(spec: 'supplychain', ...)`. They run in parallel.
+
+## 3. The spec, field by field
+
+| Field | Required | Meaning |
+|---|---|---|
+| `metadata.name` | yes | short id, lowercase (`jboss-eap`); also the workdir name |
+| `metadata.category` | yes | `OS`, `MIDDLEWARE`, `DATABASE`, `BUSINESS_CUSTOMIZED`, `APPLICATION` or `OTHER`, per the governance sheet |
+| `metadata.auid` | yes | the AUID (AP code) of the application that owns the image |
+| `spec.origin` | yes | `vendor` for a third party image, `internal` for one built by our pipelines |
+| `spec.source.ref` | yes | the image to import. Upstream hosts are rewritten through the pull-through map, refs on our Artifactory pass through |
+| `spec.source.digest` | no | `sha256:...` to pin. Empty means the live digest is resolved on every run (tracking mode) |
+| `spec.source.verify.signature` | no | `true`: the source must carry a valid signature, checked through the Supply Chain API before anything is copied |
+| `spec.source.verify.attestations` | no | predicate types the source must carry, e.g. `https://slsa.dev/provenance/v1` |
+| `spec.version` | no | the tag base. Defaults to the source tag; required when the source is a digest ref |
+| `spec.destination.repo` | yes | Artifactory docker repo the result is published to |
+| `spec.destination.path` | yes | image path inside it (`vendor/jboss-eap`, `payments/api`) |
+| `spec.prodEligible` | no | `true`: the image may be released (target `release` at the gate). Default `false` |
+| `spec.harden` | no | `true` (internal only): run the uniform hardening and flatten. Default `false` |
+| `spec.enabled` | no | `false` skips the spec. Default `true` |
+| `spec.platforms` | no | platforms to publish. Default from config (`linux/amd64`) |
+| `spec.labels.vendor` | vendor: yes | the distributing entity. Internal images default to Acme |
+| `spec.labels.description` | yes | what the image is |
+| `spec.labels.source` | yes | URL with more information on the image |
+| `spec.labels.authors`, `documentation`, `licenses`, `version`, `revision` | no | optional governance labels |
+
+Three mandatory labels are filled by the pipeline, never by you: `base.name` is the source ref,
+`base.digest` the resolved digest, `created` the import time.
+
+The spec is validated before anything touches a registry. A missing mandatory label, an unknown
+`origin`, a vendor image with `harden: true`, or a vendor image whose `vendor` label says Acme all
+stop the job with the list of problems.
+
+## 4. What happens to your image
+
+1. **Acquire.** The source is resolved through Artifactory and pinned to a digest. If you asked for
+   it, the signature and the attestations are verified. The exact manifest is copied into
+   `<destination.repo>/<path>:_built-<version>-<digest12>`, all platforms preserved. Nothing is
+   rebuilt, nothing is relabelled; the governance labels travel with the record.
+2. **Harden** (internal images with `harden: true`). The uniform `harden.sh` runs on your image,
+   the result is flattened to one layer, and your entrypoint, command, environment, user, working
+   directory, ports and volumes are re-emitted so the image still runs. The labels are baked in.
+   Your image needs a POSIX `sh` for this step.
+3. **Provenance.** A `provenance.json` is written describing the import: source, digest, who
+   imported it, and the hardening if any. It never claims to be your build.
+4. **Scan.** Vulnerability report and CycloneDX SBOM.
+5. **Gate.** The policy decision. At `release` an image needs a completed scan, no critical
+   vulnerabilities, high ones under the threshold, an SBOM, and all mandatory labels. Vendor images
+   and internal images that opted out of hardening are accepted as they are. A denied image is
+   quarantined in staging and the job fails with the reasons; nothing is published.
+6. **Publish.** Two tags on the same digest: `<path>:<version>-<digest12>` (immutable, pin this in
+   production) and `<path>:<version>` (floating, moves on the next import). The `quality.status`
+   property is set to `released` or `builder`.
+7. **Sign.** The published tag is signed and the SLSA provenance and SBOM are attached as
+   attestations. Deploy-time admission verifies them.
+
+## 5. Vendor or internal
+
+| | `origin: vendor` | `origin: internal` |
+|---|---|---|
+| typical source | Red Hat, NGINX, a public or partner registry | your app pipeline's dev repo on Artifactory |
+| hardening | never; `harden: true` is rejected | optional |
+| `labels.vendor` | must name the third party | defaults to Acme |
+| destination | usually `base-images-docker-local` under `vendor/` | your team's release repo |
+| gate | accepted without hardening | hardened by you, or accepted as is because the golden base it was built on is |
+
+## 6. Updating and re-running
+
+- **Tracking mode** (`digest: ""`): every run resolves the current digest. A weekly cron on your job
+  keeps vendor images fresh; a new upstream digest produces a new immutable tag and moves the
+  floating one.
+- **Pinned** (`digest: sha256:...`): the same image every run. Bump the digest and the version in
+  the YAML to move.
+- Changing `version` changes the tags. Changing labels changes the record and the provenance, not
+  the image bytes (unless hardening rebuilds it).
+- A failed run publishes nothing. The previous tags keep serving.
+
+## 7. When it fails
+
+| Message | Meaning | What to do |
+|---|---|---|
+| `ImageImport '<name>' rejected:` followed by a list | spec validation | fix the listed fields |
+| `could not resolve a digest for <ref>` | the source is not reachable through Artifactory | check the ref and the pull-through map; ask for a remote if the registry has none |
+| `verifySignature: Supply Chain API not wired` | you asked for verification and the API is not connected yet | set `verify.signature: false` for now, or wait for the platform team |
+| `lacks required attestations` | the source does not carry the predicate types you required | check with the team that built the image |
+| `Policy gate DENY for <name> [release]: [...]` | the gate refused release | read the reasons: CVEs to fix upstream, missing SBOM, missing labels. Set `prodEligible: false` to publish a non-release image meanwhile |
+| `harden.sh: not found` or the wrap build fails at `RUN sh` | the source has no shell | hardening needs a POSIX `sh`; set `harden: false` |
+| `no enabled ImageImport spec found at <path>` | wrong `spec:` path or every spec is `enabled: false` | check the path in the Jenkinsfile |
+
+## 8. Questions people ask
+
+**Can I put my Artifactory password in the YAML?** No. The Jenkinsfile names a Jenkins credential
+(`credentialsId`), the library binds it and logs in. Nothing secret is ever in the spec.
+
+**Do I have to use `supplyChainPipeline`?** No. Write your own declarative pipeline, bind the
+credential as `AF_USER` and `AF_PASS`, call `scLogin()` and then `supplyChain('supplychain/x.yaml')`
+inside a `script` block. You get the same stages.
+
+**Where do I see the results?** The job log lists the published tags and the signed ref. In
+Artifactory, the immutable tag carries `quality.status` and the catalog properties. The
+`provenance.json`, `sbom.json`, `scan.json` and `gate-input.json` are in the job workspace under
+`.supplychain/<name>/`.
+
+**Can one job handle images in several destination repos?** Yes. The library logs in to every
+destination repo the specs name, with the one credential you gave it. The account must have write
+access to all of them.
+
+**How do I pin a version to a library release?** `@Library('supply-chain-lib@v1')` follows the v1
+line. Pin a tag (`@v1.2.0`) if you need to freeze behaviour.
+
+**Who do I contact?** The platform team address in the config (`defaults.notify.email`) receives
+your job's failure mails; use the same address for questions and for new pull-through remotes.

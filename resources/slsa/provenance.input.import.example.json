@@ -1,0 +1,39 @@
+{
+  "_comment": "provenance.json for an IMPORTED image (kind: ImageImport), written by jenkins/vars/writeProvenance.groovy from the record acquireImage produced. It describes the IMPORT (what was pulled, from where, pinned to which digest, by whom); it never claims to be the build, the builder's own attestation stays with the source digest. Same envelope as provenance.input.example.json plus the `import` block.",
+  "imageSource": {
+    "repo": "https://gitlab.acme/payments/api-supplychain",
+    "ref": "refs/heads/main",
+    "commit": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+  },
+  "ci": {
+    "provider": "jenkins",
+    "workflow": "supplychain/jboss-eap.yaml",
+    "workflowName": "payments-supply-chain",
+    "runId": "17",
+    "runAttempt": 1
+  },
+  "container": {
+    "imageRepo": "base-images-docker-local.artifactory.acme/vendor/jboss-eap",
+    "platform": "linux/amd64",
+    "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "customMetadata": {
+    "owner_team": "devsecops-cd-team",
+    "build_number": "17",
+    "environment": "production"
+  },
+  "baseImage": {
+    "kind": "imported-image",
+    "origin": "vendor",
+    "variant": "imported"
+  },
+  "import": {
+    "origin": "vendor",
+    "sourceRef": "registry.redhat.io/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15",
+    "resolvedFrom": "redhat-io-remote.artifactory.acme/jboss-eap-7/eap74-openjdk17-openshift-rhel8:7.4.15",
+    "sourceDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "signatureVerified": false,
+    "importedBy": "https://jenkins.acme/job/payments-supply-chain/17/",
+    "harden": false
+  }
+}

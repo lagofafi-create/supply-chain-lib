@@ -1,0 +1,189 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://imagefactory.acme.dev/imageimport.schema.json",
+ "title": "supply-chain-lib ImageImport spec",
+ "description": "An image this pipeline did NOT build, put through the supply chain (acquire -> [harden] -> scan -> gate -> publish -> sign). Same envelope as the base-image factory specs.",
+ "type": "object",
+ "required": [
+  "apiVersion",
+  "kind",
+  "metadata",
+  "spec"
+ ],
+ "properties": {
+  "apiVersion": {
+   "const": "imagefactory.acme.dev/v1"
+  },
+  "kind": {
+   "const": "ImageImport"
+  },
+  "metadata": {
+   "type": "object",
+   "required": [
+    "name",
+    "category",
+    "auid"
+   ],
+   "properties": {
+    "name": {
+     "type": "string",
+     "pattern": "^[a-z0-9][a-z0-9.-]*$"
+    },
+    "category": {
+     "enum": [
+      "OS",
+      "MIDDLEWARE",
+      "DATABASE",
+      "BUSINESS_CUSTOMIZED",
+      "APPLICATION",
+      "OTHER"
+     ]
+    },
+    "auid": {
+     "type": "string"
+    }
+   }
+  },
+  "spec": {
+   "type": "object",
+   "description": "An image the factory did NOT build, put through the same supply chain (acquire -> [harden] -> scan -> gate -> publish -> sign). Complete on its own: the author supplies source, destination, origin and every mandatory governance label; base.name / base.digest / created are derived by the pipeline.",
+   "required": [
+    "origin",
+    "source",
+    "destination",
+    "labels"
+   ],
+   "properties": {
+    "origin": {
+     "enum": [
+      "vendor",
+      "internal"
+     ],
+     "description": "vendor: third-party image, never hardened, `labels.vendor` names the third party. internal: built by one of our pipelines, hardening optional, `labels.vendor` defaults to ours."
+    },
+    "source": {
+     "type": "object",
+     "required": [
+      "ref"
+     ],
+     "properties": {
+      "ref": {
+       "type": "string",
+       "description": "image ref; upstream hosts are rewritten through the pull-through map, internal refs pass through"
+      },
+      "digest": {
+       "type": "string",
+       "description": "sha256:... to pin; empty = resolve the live digest on every run (tracking mode)"
+      },
+      "verify": {
+       "type": "object",
+       "properties": {
+        "signature": {
+         "type": "boolean",
+         "description": "require a valid signature on the source before importing"
+        },
+        "attestations": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         },
+         "description": "predicate types the source must carry (e.g. https://slsa.dev/provenance/v1); checked through the Supply Chain API"
+        }
+       }
+      }
+     }
+    },
+    "version": {
+     "type": "string",
+     "description": "tag base (<path>:<version> floating, <path>:<version>-<digest12> immutable); default = the source tag"
+    },
+    "destination": {
+     "type": "object",
+     "required": [
+      "repo",
+      "path"
+     ],
+     "properties": {
+      "repo": {
+       "type": "string",
+       "description": "Artifactory docker repo (subdomain form <repo>.<registry>)"
+      },
+      "path": {
+       "type": "string",
+       "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+      }
+     }
+    },
+    "prodEligible": {
+     "type": "boolean"
+    },
+    "harden": {
+     "type": "boolean",
+     "description": "internal only: wrap-build harden.sh + flatten (re-emits the image config). Rejected for origin: vendor."
+    },
+    "enabled": {
+     "type": "boolean"
+    },
+    "platforms": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "labels": {
+     "type": "object",
+     "required": [
+      "description",
+      "source"
+     ],
+     "description": "governance labels (docs/reference/governance-labels.md). Mandatory here: description, source, and vendor for origin: vendor (defaults to ours for internal). Optional: authors, documentation, licenses, version, revision.",
+     "properties": {
+      "vendor": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "source": {
+       "type": "string"
+      },
+      "authors": {
+       "type": "string"
+      },
+      "documentation": {
+       "type": "string"
+      },
+      "licenses": {
+       "type": "string"
+      },
+      "version": {
+       "type": "string"
+      },
+      "revision": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "if": {
+    "properties": {
+     "origin": {
+      "const": "vendor"
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "harden": {
+      "const": false
+     },
+     "labels": {
+      "required": [
+       "vendor"
+      ]
+     }
+    }
+   }
+  }
+ }
+}

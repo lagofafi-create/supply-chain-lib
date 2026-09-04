@@ -1,0 +1,12 @@
+// PR / push checks for the library itself (not an image pipeline): unit tests, policy tests, shellcheck.
+pipeline {
+    agent { label 'buildkit' }
+    options { timestamps() }
+    stages {
+        stage('test') {
+            steps {
+                sh 'python3 -m venv .venv && . .venv/bin/activate && pip install -q -r requirements-dev.txt && bash tests/run.sh'
+            }
+        }
+    }
+}

@@ -1,0 +1,33 @@
+{
+  "_comment": "Per-image provenance.json, written by jenkins/vars/writeProvenance.groovy AFTER every build (one per image, in the cell's workdir). This is the INPUT the internal CLI consumes to generate + attest the final SLSA predicate (secureImage). The digest is the staging manifest digest, which is byte-identical to the published digest (registry-side retag). Edit this file to evolve the contract; keep writeProvenance.groovy in sync.",
+  "imageSource": {
+    "repo": "https://gitlab.acme/base-images/specs",
+    "ref": "refs/heads/main",
+    "commit": "4f3c2a1b8e9d0f1234567890abcdef123456789d"
+  },
+  "ci": {
+    "provider": "jenkins",
+    "workflow": "jenkins/Jenkinsfile.runtime",
+    "workflowName": "build-runtime",
+    "runId": "42",
+    "runAttempt": 1
+  },
+  "container": {
+    "imageRepo": "base-images-docker-local.artifactory.acme/runtime/python",
+    "platform": "linux/amd64",
+    "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "customMetadata": {
+    "owner_team": "devsecops-cd-team",
+    "build_number": "42",
+    "environment": "production"
+  },
+  "baseImage": {
+    "kind": "internal-base-image",
+    "language": "python",
+    "runtime_version": "3.12.4",
+    "variant": "runtime",
+    "os": "ubuntu",
+    "os_version": "24.04"
+  }
+}

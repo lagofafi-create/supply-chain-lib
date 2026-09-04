@@ -1,0 +1,2 @@
+@Library('supply-chain-lib@v1') _
+supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'payments-artifactory')

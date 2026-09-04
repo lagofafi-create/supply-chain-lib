@@ -1,0 +1,25 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://imagefactory.acme.dev/provenance.schema.json",
+ "title": "per image provenance.json (input of the Supply Chain CLI)",
+ "type": "object",
+ "required": ["imageSource", "ci", "container", "customMetadata", "baseImage"],
+ "properties": {
+  "imageSource": {"type": "object", "required": ["repo", "ref", "commit"],
+   "properties": {"repo": {"type": "string", "minLength": 1}, "ref": {"type": "string", "minLength": 1}, "commit": {"type": "string", "minLength": 1}}},
+  "ci": {"type": "object", "required": ["provider", "workflow", "workflowName", "runId", "runAttempt"],
+   "properties": {"provider": {"const": "jenkins"}, "workflow": {"type": "string", "minLength": 1},
+                  "workflowName": {"type": "string", "minLength": 1}, "runId": {"type": "string", "minLength": 1}, "runAttempt": {"type": "integer"}}},
+  "container": {"type": "object", "required": ["imageRepo", "platform", "digest"],
+   "properties": {"imageRepo": {"type": "string", "minLength": 1}, "platform": {"type": "string", "minLength": 1},
+                  "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}},
+  "customMetadata": {"type": "object", "required": ["owner_team", "build_number", "environment"],
+   "properties": {"owner_team": {"type": "string", "minLength": 1}, "build_number": {"type": "string", "minLength": 1},
+                  "environment": {"enum": ["dev", "production"]}}},
+  "baseImage": {"type": "object", "required": ["kind"],
+   "properties": {"kind": {"enum": ["internal-base-image", "imported-image"]}}},
+  "import": {"type": "object", "required": ["origin", "sourceRef", "sourceDigest", "importedBy"],
+   "properties": {"origin": {"enum": ["vendor", "internal"]}, "sourceRef": {"type": "string", "minLength": 1},
+                  "sourceDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "importedBy": {"type": "string", "minLength": 1}}}
+ }
+}

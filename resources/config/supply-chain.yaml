@@ -1,0 +1,35 @@
+# Library defaults. Overridden by config/registry.yaml and config/defaults.yaml in the workspace,
+# then the file named in SC_CONFIG, then REGISTRY and REPO from the environment.
+registry: artifactory.acme
+
+credentials:
+  docker: artifactory-docker
+  api: supply-chain-api-token       # secret text credential: bearer token for the Supply Chain API
+
+# Supply Chain API (signature verification, attestations, gate). SC_API_URL overrides the url.
+api:
+  url: https://supply-chain.acme/api
+
+# default docker repo: registry logins and legacy VendorImageImport specs
+repo: base-images-docker-local
+
+# upstream registry host to Artifactory remote repo (subdomain access: <remote>.<registry>/<image>)
+pull:
+  docker.io:                  dockerhub-remote
+  registry.access.redhat.com: redhat-remote
+  ghcr.io:                    ghcr-remote
+  # registry.redhat.io (JBoss EAP and other authenticated Red Hat images) needs its own remote:
+  # registry.redhat.io:         redhat-io-remote
+  default:                    docker-remote
+
+workRoot: .supplychain
+
+defaults:
+  platforms: [linux/amd64]
+  auid: AP00000
+  labels:
+    vendor: Acme
+    authors: devsecops-cd-team
+    documentation: https://docs.acme.example/base-images
+  notify:
+    email: devsecops-cd-team@acme.example
