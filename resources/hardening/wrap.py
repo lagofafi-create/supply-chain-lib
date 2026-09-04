@@ -3,8 +3,9 @@
 
     wrap.py --from <repo>@<digest> --config image-config.json --labels labels.json --out Dockerfile
 
-image-config.json is the output of `docker buildx imagetools inspect --format '{{json .Image}}'`,
-either one image config or a map keyed by platform. The Dockerfile installs the internal CA (with
+image-config.json is `docker inspect --format '{{json .Config}}'` (the config block itself), or the
+output of `docker buildx imagetools inspect --format '{{json .Image}}'`, one image config or a map
+keyed by platform. The Dockerfile installs the internal CA (with
 --certs), hardens the image, flattens it to one layer, then re-emits the config the flatten
 dropped and bakes the labels in.
 """
@@ -16,6 +17,8 @@ import sys
 def image_config(doc):
     if isinstance(doc, dict) and "config" in doc:
         return doc.get("config") or {}
+    if isinstance(doc, dict) and any(k in doc for k in ("Env", "Entrypoint", "Cmd", "User", "WorkingDir")):
+        return doc
     if isinstance(doc, dict):
         for _platform, img in sorted(doc.items()):
             if isinstance(img, dict) and "config" in img:

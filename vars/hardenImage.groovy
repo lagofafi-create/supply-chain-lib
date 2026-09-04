@@ -15,17 +15,19 @@ def call(Map rec) {
     certs.each { name -> writeFile file: "${ctx}/certs/${name}.crt", text: libraryResource("certs/${name}.crt") }
     def certArgs = certs ? "--certs --runtime ${rec.runtime ?: 'auto'} --alias-prefix ${c.certAliasPrefix ?: 'internal'}" : ''
 
-    def cfgJson = sh(script: "docker buildx imagetools inspect ${rec.stagingRef} --format '{{json .Image}}'", returnStdout: true).trim()
+    def pinned = "${rec.stagingRef.replaceFirst(/:[^:\/]+$/, '')}@${rec.imageDigest}"
+    // the source config through the docker engine: works on every docker version, and the
+    // wrap-build pulls the same image anyway
+    sh "docker pull -q ${pinned} >/dev/null"
+    def cfgJson = sh(script: "docker inspect --format '{{json .Config}}' ${pinned}", returnStdout: true).trim()
     writeFile file: "${ctx}/image-config.json", text: cfgJson
     writeJSON file: "${ctx}/labels.json", json: (rec.labels ?: [:])
-    def pinned = "${rec.stagingRef.replaceFirst(/:[^:\/]+$/, '')}@${rec.imageDigest}"
     sh "python3 ${ctx}/wrap.py --from ${pinned} --config ${ctx}/image-config.json --labels ${ctx}/labels.json ${certArgs} --out ${ctx}/Dockerfile"
 
     def hardenedRef = "${rec.stagingRef}-hardened"
     def platforms = (rec.platforms ?: ['linux/amd64']).join(',')
     sh "docker buildx build --platform ${platforms} -f ${ctx}/Dockerfile -t ${hardenedRef} --provenance=true --sbom=true --push ${ctx}"
-    def digest = sh(script: "docker buildx imagetools inspect ${hardenedRef} --format '{{.Manifest.Digest}}'", returnStdout: true).trim()
-    if (!(digest ==~ /sha256:[0-9a-f]{64}/)) error "hardenImage: no digest for ${hardenedRef} (got '${digest}')"
+    def digest = scDigest(hardenedRef)
     echo "hardened ${rec.name}: ${rec.imageDigest} -> ${digest}"
 
     return rec + [

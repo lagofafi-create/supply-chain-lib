@@ -18,6 +18,7 @@ def test_config_from_single_and_multiarch_inspect_shapes():
     multi = {"linux/amd64": single, "linux/arm64": {"architecture": "arm64", "config": CFG}}
     assert wrap.image_config(single) == CFG
     assert wrap.image_config(multi) == CFG
+    assert wrap.image_config(CFG) == CFG            # docker inspect .Config shape
 
 
 def test_dockerfile_hardens_flattens_and_reemits_config():

@@ -11,9 +11,7 @@ def call(Object spec) {
 
     def srcTagRef = scConfig.pullRef(s.sourceRef)
     def repoPart = srcTagRef.contains('@') ? srcTagRef.split('@')[0] : srcTagRef.replaceFirst(/:[^:\/]+$/, '')
-    def digest = s.sourceDigest ?: sh(script: "docker buildx imagetools inspect ${srcTagRef} --format '{{.Manifest.Digest}}'",
-                                      returnStdout: true).trim()
-    if (!(digest ==~ /sha256:[0-9a-f]{64}/)) error "could not resolve a digest for ${srcTagRef} (got '${digest}')"
+    def digest = s.sourceDigest ?: scDigest(srcTagRef)
     def srcRef = "${repoPart}@${digest}"
     def version = s.version ?: tagOf(s.sourceRef)
     def digest12 = digest.split(':')[-1].take(12)
