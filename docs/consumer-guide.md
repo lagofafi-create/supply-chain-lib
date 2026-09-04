@@ -74,7 +74,7 @@ To track several images, put one YAML per image in the directory and pass the di
 | `spec.version` | no | the tag base. Defaults to the source tag; required when the source is a digest ref |
 | `spec.destination.repo` | yes | Artifactory docker repo the result is published to |
 | `spec.destination.path` | yes | image path inside it (`vendor/jboss-eap`, `payments/api`) |
-| `spec.prodEligible` | no | `true`: the image is meant for production. The gate applies the full release rules and the published tags get `quality.status=released`. `false`: only the labels are checked and the tags get `quality.status=dev`, usable outside production only. Default `false` |
+| `spec.prodEligible` | no | `true`: the image is meant for production. The gate applies the full release rules, the tags get `quality.status=released`, the image is signed and attested. `false`: only the labels are checked, the tags get `quality.status=dev`, and the image is published unsigned, so admission can never deploy it. Default `false` |
 | `spec.harden` | no | `true` (internal only): run the uniform hardening and flatten. Default `false` |
 | `spec.enabled` | no | `false`: the spec is skipped entirely, nothing runs, the tags already published stay as they are. A pause switch that keeps the file in place. Default `true` |
 | `spec.platforms` | no | platforms to publish. Default from config (`linux/amd64`) |
@@ -115,8 +115,9 @@ with the list of problems.
 6. **Publish.** Two tags on the same digest: `<path>:<version>-<digest12>` (immutable, pin this in
    production) and `<path>:<version>` (floating, moves on the next import). The `quality.status`
    property is `released` when `prodEligible` is true, `dev` otherwise.
-7. **Sign.** The published tag is signed and the SLSA provenance and SBOM are attached as
-   attestations.
+7. **Sign.** Prod eligible images only: the published tag is signed and the SLSA provenance and
+   SBOM are attached as attestations. A `prodEligible: false` image is published unsigned, which is
+   exactly what keeps it out of production.
 8. **Verify.** The Supply Chain API is asked to confirm the signature and both attestations on the
    published digest. Nothing is signed before this pipeline, so this is the only place a signature
    is checked. Deploy-time admission verifies them again.

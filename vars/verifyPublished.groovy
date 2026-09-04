@@ -1,7 +1,7 @@
 // Last step: check that what we published really carries a signature and the two attestations
 // signImage attached. Nothing to check while the Supply Chain API is not enabled.
 def call(Map rec) {
-    if (rec.skipped) return rec
+    if (rec.skipped || !rec.prodEligible) return rec
     def c = scConfig()
     if (!c.api?.enabled) {
         echo "verifyPublished skipped: Supply Chain API not enabled"

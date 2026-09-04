@@ -40,9 +40,10 @@ unless the spec overrides them; `base.name`, `base.digest`, `created` are derive
 digest-pinned through the Artifactory pull-through map → copied exactly into
 `<destination.repo>/<path>:_built-<version>-<digest12>` → optionally hardened → provenance written
 → scanned (SBOM + vuln report) → policy gate → published as `<path>:<version>-<digest12>`
-(immutable) + `<path>:<version>` (floating) with `quality.status` → signed + attested (SLSA
-provenance of the **import**, CycloneDX SBOM) → signature and attestations verified on the
-published digest through the Supply Chain API.
+(immutable) + `<path>:<version>` (floating) with `quality.status` → if prod eligible, signed +
+attested (SLSA provenance of the **import**, CycloneDX SBOM) and verified on the published digest
+through the Supply Chain API. A `prodEligible: false` image is published unsigned and can never
+pass admission.
 
 | `origin` | hardening | `labels.vendor` |
 |---|---|---|
