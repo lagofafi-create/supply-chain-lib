@@ -1,17 +1,15 @@
-// Policy gate on a record. Fails closed: no decision means deny. On deny the staging image is
-// quarantined and the build stops.
-//
-// The decision itself (rules, CTI score, waivers) moves to the Supply Chain API. When it is wired:
-//   sh "scs gate --input ${wd}/gate-input.json --report ${wd}/scan.json --sbom ${wd}/sbom.json --out ${wd}/gate-decision.json"
-//   deny = groovy.json.JsonOutput.toJson(readJSON(file: "${wd}/gate-decision.json").deny ?: [])
-// Until then the same input goes through opa, with the rules repo from RULES_REPO_DIR or the
-// example policy bundled with this library.
+// Policy gate on a record. Everything is decided here with opa (labels, hardening, scan present,
+// SBOM present, dev CA) from the rules repo in RULES_REPO_DIR or the example policy bundled with
+// this library. The CVE verdict and the CTI score come from the Supply Chain API and are merged
+// into the same decision; until that call is wired the local policy also applies the interim
+// CVE thresholds. Fails closed: no decision means deny. On deny the staging image is quarantined
+// and the build stops.
 def call(Map rec) {
     if (rec.skipped) { echo "gate skipped: ${rec.name}"; return rec }
     def wd = rec.workdir
     def target = rec.prodEligible ? 'release' : 'dev'
     def scan = fileExists("${wd}/scan.json") ? readJSON(file: "${wd}/scan.json") : null
-    writeJSON file: "${wd}/gate-input.json", json: [
+    def input = [
         target       : target,
         kind         : (rec.kind ?: 'import'),
         origin       : (rec.origin ?: 'built'),
@@ -24,7 +22,15 @@ def call(Map rec) {
         sbomGenerated: fileExists("${wd}/sbom.json"),
     ]
 
-    def deny = '[]'
+    // CVE verdict and CTI score from the Supply Chain API. When it is wired:
+    //   sh "scs gate --image ${rec.stagingRef} --category ${rec.category} --report ${wd}/scan.json --sbom ${wd}/sbom.json --out ${wd}/cve-decision.json"
+    //   def cve = readJSON(file: "${wd}/cve-decision.json")   // { "deny": ["CVE-... critical"], "ctiScore": n }
+    //   input.scan.ctiScore = cve.ctiScore ?: 0
+    //   apiDeny = (cve.deny ?: []) as List
+    def apiDeny = []
+
+    writeJSON file: "${wd}/gate-input.json", json: input
+    def denies = []
     if (rec.gateSkip) {
         echo "gate skipped: ${rec.gateSkip}"
     } else {
@@ -34,15 +40,17 @@ def call(Map rec) {
             rulesDir = "${wd}/policy"
             writeFile file: "${rulesDir}/gate.rego", text: libraryResource('policy/gate.rego')
         }
-        deny = sh(script: "opa eval -f raw -d ${rulesDir} -i ${wd}/gate-input.json 'data.imagefactory.gate.deny'",
-                  returnStdout: true).trim()
-        if (!deny || deny == 'undefined') {
+        def raw = sh(script: "opa eval -f raw -d ${rulesDir} -i ${wd}/gate-input.json 'data.imagefactory.gate.deny'",
+                     returnStdout: true).trim()
+        if (!raw || raw == 'undefined') {
             error "Policy gate produced no decision (rules dir '${rulesDir}' missing or package mismatch)"
         }
+        denies = (readJSON(text: raw) ?: []) as List
     }
-    if (deny && deny != '[]' && deny != 'null') {
+    denies += apiDeny
+    if (denies) {
         scProps(rec.stagingRef, 'quality.status=quarantine')
-        error "Policy gate DENY for ${rec.name} [${target}]: ${deny}"
+        error "Policy gate DENY for ${rec.name} [${target}]:\n - ${denies.join('\n - ')}"
     }
-    return rec + [gate: [target: target, deny: deny]]
+    return rec + [gate: [target: target, deny: denies]]
 }

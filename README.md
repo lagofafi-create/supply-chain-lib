@@ -108,6 +108,6 @@ tests/         run.sh (pytest + opa + shellcheck)      docs/consumer-guide.md ·
 
 ## Placeholders to wire
 
-`scanImage` (Trivy or `scs scan`), `gateImage` (`scs gate`, policy and CTI on the Supply Chain API;
-local opa is the interim path), `signImage` (`scs sign` / `scs attest`), and the API calls in
-`verifySignature` / `getAttestations` (guarded by `api.enabled`, endpoints to confirm).
+`scanImage` (Trivy or `scs scan`), the CVE verdict and CTI score in `gateImage` (`scs gate`; every
+other rule is evaluated locally today and stays local), `signImage` (`scs sign` / `scs attest`), and
+the API calls in `verifySignature` / `getAttestations` (guarded by `api.enabled`, endpoints to confirm).

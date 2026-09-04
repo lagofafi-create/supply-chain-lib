@@ -3,7 +3,7 @@
 def call(Map rec) {
     if (rec.skipped) { echo "publish skipped: ${rec.name}"; return rec }
     if (!rec.gate) error "publishImage: ${rec.name} was not gated"
-    if (rec.gate.deny && rec.gate.deny != '[]' && rec.gate.deny != 'null') error "publishImage: ${rec.name} was denied"
+    if (rec.gate.deny) error "publishImage: ${rec.name} was denied"
     def tags = rec.tagPlan as List
     if (!tags) error "publishImage: empty tagPlan for ${rec.name}"
 

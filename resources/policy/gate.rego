@@ -72,8 +72,8 @@ deny contains msg if {
 	msg := "release blocked: no completed vulnerability scan"
 }
 
-# Severity thresholds. CTI scoring + per-CVE waivers (justification + expiry) override
-# upstream severity in the external rules repo (data.waivers / data.cti).
+# Interim severity thresholds. The CVE verdict and the CTI score come from the Supply Chain API
+# once gateImage calls it; these two rules stay as a floor until then.
 deny contains msg if {
 	input.target == "release"
 	input.scan.criticalCount > 0

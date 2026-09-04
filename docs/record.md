@@ -48,9 +48,10 @@ Producers: `factoryRecord` (built images, the only place that switches on `cell.
 ```
 Rules (`resources/policy/gate.rego`, real ones in the external rules repo): the 8 mandatory labels on every
 target; at release: hardened **unless `importedAsIs`**, a completed scan, no critical, high ≤
-threshold, an SBOM, no dev CA. The policy decision and CTI scoring will move to the Supply Chain
-API (`scs gate`, placeholder in `gateImage`); the local opa evaluation is the interim path with the
-same input and the same `deny` contract.
+threshold, an SBOM, no dev CA. All of that is evaluated locally by opa and stays local. Only the
+CVE verdict and the CTI score come from the Supply Chain API (`scs gate`, placeholder in
+`gateImage`) and are merged into the same deny list; the local critical/high thresholds are the
+interim floor until that call is wired.
 
 ## The `ImageImport` spec
 

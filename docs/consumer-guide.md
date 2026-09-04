@@ -115,10 +115,12 @@ with the list of problems.
 3. **Provenance.** A `provenance.json` is written describing the import: source, digest, who
    imported it, and the hardening if any. It never claims to be your build.
 4. **Scan.** Vulnerability report and CycloneDX SBOM.
-5. **Gate.** The policy decision. At `release` an image needs a completed scan, no critical
-   vulnerabilities, high ones under the threshold, an SBOM, and all mandatory labels. Vendor images
-   and internal images that opted out of hardening are accepted as they are. A denied image is
-   quarantined in staging and the job fails with the reasons; nothing is published.
+5. **Gate.** The policy decision, evaluated locally: all mandatory labels on every image; at
+   `release` also a completed scan, an SBOM, hardening (vendor images and internal images that
+   opted out are accepted as they are), no dev CA. The CVE verdict and the CTI score come from
+   the Supply Chain API and are merged into the same decision (interim thresholds apply until it
+   is wired: no critical, high under the threshold). A denied image is quarantined in staging and
+   the job fails with the reasons; nothing is published.
 6. **Publish.** Two tags on the same digest: `<path>:<version>-<digest12>` (immutable, pin this in
    production) and `<path>:<version>` (floating, moves on the next import). The `quality.status`
    property is `released` when `prodEligible` is true, `dev` otherwise.
