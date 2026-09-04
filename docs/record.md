@@ -32,7 +32,7 @@ what makes the supply-chain steps reusable outside this repo (see *Consumers* at
 | `provenance` | `writeProvenance` | sign | path of `provenance.json` |
 | `sbom`, `scanReport`, `scan{available,criticalCount,highCount}` | `scanImage` | gate, sign | scanner outputs |
 | `gate{target,deny}` | `gateImage` | publish | publish refuses anything not gated or denied |
-| `tags`, `published`, `signRefs` | `publishImage` | sign | applied tags, the immutable ref, the ref(s) to sign |
+| `tags`, `published`, `signRefs` | `publishImage` | sign | applied tags, the immutable ref, the ref(s) to sign (signed only when `prodEligible`) |
 
 Producers: `factoryRecord` (built images, the only place that switches on `cell.kind`) and
 `acquireImage` (imports).
