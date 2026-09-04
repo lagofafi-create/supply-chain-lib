@@ -1,5 +1,6 @@
-// Library configuration. Bundled defaults first, then config/registry.yaml and config/defaults.yaml
-// from the workspace, then the file named in SC_CONFIG, then REGISTRY and REPO from the environment.
+// Library configuration: the platform values bundled in resources/config/supply-chain.yaml, then
+// config/registry.yaml and config/defaults.yaml from the workspace when present (the factory's own),
+// then the file named in SC_CONFIG, then REGISTRY from the environment.
 def call() {
     if (binding.hasVariable('_scConfigCache') && _scConfigCache) return _scConfigCache
     def m = readYaml(text: libraryResource('config/supply-chain.yaml'))

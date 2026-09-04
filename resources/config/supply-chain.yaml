@@ -1,18 +1,10 @@
-# Library defaults. Overridden by config/registry.yaml and config/defaults.yaml in the workspace,
-# then the file named in SC_CONFIG, then REGISTRY and REPO from the environment.
+# Platform owned values only. Consumers provide their credential id, labels, platforms and notify
+# address themselves. Overridden by config/registry.yaml and config/defaults.yaml in the workspace,
+# then the file named in SC_CONFIG, then REGISTRY from the environment.
 registry: artifactory.acme
 
-credentials:
-  docker: artifactory-docker
-  api: supply-chain-api-token       # secret text credential: bearer token for the Supply Chain API
-
-# Supply Chain API (signature verification, attestations, gate). Off until wired; SC_API_URL overrides the url.
-api:
-  enabled: false
-  url: https://supply-chain.acme/api
-
-# default docker repo: registry logins and legacy VendorImageImport specs
-repo: base-images-docker-local
+# our organisation name, used only to refuse a vendor image labelled as ours
+org: Acme
 
 # upstream registry host to Artifactory remote repo (subdomain access: <remote>.<registry>/<image>)
 pull:
@@ -23,14 +15,12 @@ pull:
   # registry.redhat.io:         redhat-io-remote
   default:                    docker-remote
 
-workRoot: .supplychain
+# Supply Chain API (signature verification, attestations, gate). Off until wired; SC_API_URL overrides the url.
+api:
+  enabled: false
+  url: https://supply-chain.acme/api
 
-defaults:
-  platforms: [linux/amd64]
-  auid: AP00000
-  labels:
-    vendor: Acme
-    authors: devsecops-cd-team
-    documentation: https://docs.acme.example/base-images
-  notify:
-    email: devsecops-cd-team@acme.example
+credentials:
+  api: supply-chain-api-token       # secret text credential: platform bearer token for the API
+
+workRoot: .supplychain

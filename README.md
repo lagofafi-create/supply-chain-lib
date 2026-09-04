@@ -16,7 +16,8 @@ same **record** and calls the same steps. One code path, one policy, one provena
 `Jenkinsfile` (the whole file):
 ```groovy
 @Library('supply-chain-lib@v1') _
-supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml')     // or a directory: spec: 'supplychain'
+supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml',     // or a directory: spec: 'supplychain'
+                    credentialsId: 'payments-artifactory', notifyEmail: 'payments-team@acme.example')
 ```
 
 `supplychain/jboss-eap.yaml` — the spec is complete on its own (see [examples/](examples/)):
@@ -31,11 +32,12 @@ spec:
   destination: { repo: base-images-docker-local, path: vendor/jboss-eap }
   prodEligible: true
   harden: false                      # internal images may set true (wrap-build harden.sh + flatten)
+  platforms: [linux/amd64]
   labels: { vendor: "Red Hat", description: "...", source: "https://catalog.redhat.com/..." }
 ```
 
-What happens: the spec is validated (`auid`, `category`, `description`, and `vendor` for vendor
-images come from the spec; `source` and `revision` are the Jenkins checkout's URL and commit
+What happens: the spec is validated (`auid`, `category`, `platforms`, `description` and `vendor`
+come from the spec; `source` and `revision` are the Jenkins checkout's URL and commit
 unless the spec overrides them; `base.name`, `base.digest`, `created` are derived) → the source is
 digest-pinned through the Artifactory pull-through map → copied exactly into
 `<destination.repo>/<path>:_built-<version>-<digest12>` → optionally hardened → provenance written
@@ -48,7 +50,7 @@ pass admission.
 | `origin` | hardening | `labels.vendor` |
 |---|---|---|
 | `vendor` | never (`harden: true` is rejected) | must name the third party |
-| `internal` | optional | defaults to ours |
+| `internal` | optional | our organisation, written by the author |
 
 New here? Start with the [consumer guide](docs/consumer-guide.md). Full field reference and the
 record contract: [docs/record.md](docs/record.md).
@@ -62,25 +64,21 @@ API (`api.url`, token in `credentials.api`) and are skipped while `api.enabled` 
 
 ## Credentials
 
-Secrets never go in the spec. The job binds one Jenkins username/password credential and logs in
-to every repo it touches (the pull-through remotes, the default repo, the spec's destination repo):
-
-```groovy
-supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'payments-artifactory')
-```
-
-`credentialsId` names a credential visible to the job (folder or global scope) whose account can
-read the source and write the destination repo. Without it the library uses `credentials.docker`
-from the config (`artifactory-docker` by default). Teams that write their own Jenkinsfile instead
-of `supplyChainPipeline` bind the credential themselves as `AF_USER` / `AF_PASS` and call
-`scLogin()` before `supplyChain(...)`.
+Secrets never go in the spec. The job binds the Jenkins username/password credential named by
+`credentialsId` (required) and logs in to the pull-through remotes and to every destination repo
+the specs name; the account must read the source and write the destination. Teams that write
+their own Jenkinsfile instead of `supplyChainPipeline` bind it as `AF_USER` / `AF_PASS` and call
+`scLogin([repos])` before `supplyChain(...)`. The Supply Chain API token (`credentials.api`) is the
+platform's, bound by the library itself.
 
 ## Configuration
 
-`resources/config/supply-chain.yaml` holds the org defaults (registry host, pull-through map,
-credential ids, default labels, notify address). Overrides, later wins: `config/registry.yaml` +
-`config/defaults.yaml` in the job's workspace → the file named by env `SC_CONFIG` → env `REGISTRY`
-/ `REPO`. Rules: the external rules repo via `RULES_REPO_DIR`, else the bundled example policy.
+`resources/config/supply-chain.yaml` holds platform values only: registry host, organisation
+name, pull-through map, Supply Chain API url and token credential id, work root. Nothing a consumer
+should decide is defaulted there: credential id, labels, platforms and notify address come from the
+consumer's Jenkinsfile and spec, and are simply absent when not given. Overrides, later wins:
+`config/registry.yaml` + `config/defaults.yaml` in the job's workspace → the file named by env
+`SC_CONFIG` → env `REGISTRY`. Rules: the external rules repo via `RULES_REPO_DIR`, else the bundled example policy.
 
 Agent requirements: `docker` (buildx), `python3` (only for `harden: true`), `opa` (interim local
 gate), the Supply Chain CLI `scs` (scan/verify/sign/attest — placeholders today, marked in the steps).

@@ -1,7 +1,6 @@
 // Bring an image we did not build into the supply chain: check the spec, pin the source digest,
 // take source and revision from the Jenkins checkout (the spec overrides them), copy the exact
 // manifest into the destination repo's staging tag, build the record.
-// The legacy VendorImageImport kind is accepted and mapped.
 def call(Object spec) {
     def file = (spec instanceof Map && spec.doc) ? spec.file : null
     def doc = (spec instanceof Map && spec.doc) ? spec.doc : spec
@@ -21,9 +20,8 @@ def call(Object spec) {
 
     // source and revision are the repository this job runs from; the spec wins on every key it sets
     def fromJenkins = [source: env.GIT_URL, revision: env.GIT_COMMIT].findAll { it.value }
-    def gl = (c.defaults?.labels ?: [:]) + fromJenkins + s.labels
-    if (s.origin == 'internal' && !gl.vendor) gl.vendor = c.defaults?.labels?.vendor ?: 'Acme'
-    problems = validateLabels(s, gl, c.defaults?.labels?.vendor ?: 'Acme')
+    def gl = fromJenkins + s.labels
+    problems = validateLabels(s, gl, c.org)
     if (problems) error "ImageImport '${s.name}' rejected:\n - ${problems.join('\n - ')}"
 
     def destRepoRef = "${s.destRepo}.${c.registry}/${s.destPath}"
@@ -59,6 +57,7 @@ def call(Object spec) {
         prodEligible : s.prodEligible,
         platforms    : s.platforms,
         labels       : labels,
+        ownerTeam    : (gl.authors ?: s.auid),
         gateSkip     : null,
         tagPlan      : ["${destRepoRef}:${version}-${digest12}", "${destRepoRef}:${version}"],
         qualityStatus: (s.prodEligible ? 'released' : 'dev'),
@@ -81,28 +80,23 @@ private static String tagOf(String ref) {
     return last.contains(':') ? last.split(':')[-1] : ''
 }
 
-
 private Map normalise(Map doc) {
-    def c = scConfig()
     def sp = doc.spec ?: [:]
-    def legacy = doc.kind == 'VendorImageImport'
-    def src = legacy ? (sp.source?.upstream ?: [:]) : (sp.source ?: [:])
-    def name = doc.metadata?.name
+    def src = sp.source ?: [:]
     return [
-        legacy      : legacy,
-        name        : name,
-        origin      : legacy ? 'vendor' : sp.origin,
+        name        : doc.metadata?.name,
+        origin      : sp.origin,
         sourceRef   : (src.ref ?: ''),
         sourceDigest: (((src.digest ?: '') ==~ /sha256:[0-9a-f]{64}/) ? src.digest : ''),
         version     : (sp.version ?: '').toString(),
-        destRepo    : (sp.destination?.repo ?: (legacy ? c.repo : '')),
-        destPath    : (sp.destination?.path ?: (legacy ? "vendor/${name}" : '')),
+        destRepo    : (sp.destination?.repo ?: ''),
+        destPath    : (sp.destination?.path ?: ''),
         prodEligible: (sp.prodEligible ?: false),
         harden      : (sp.harden ?: false),
-        platforms   : (sp.platforms ?: (c.defaults?.platforms ?: ['linux/amd64'])),
+        platforms   : (sp.platforms ?: []),
         labels      : (sp.labels ?: [:]),
-        auid        : (doc.metadata?.auid ?: (legacy ? (c.defaults?.auid ?: 'AP00000') : '')),
-        category    : (doc.metadata?.category ?: (legacy ? 'OTHER' : '')),
+        auid        : (doc.metadata?.auid ?: ''),
+        category    : (doc.metadata?.category ?: ''),
     ]
 }
 
@@ -111,7 +105,7 @@ private static final List CATEGORIES = ['OS', 'MIDDLEWARE', 'DATABASE', 'BUSINES
 // Checked before any registry call.
 private List validateSpec(Map doc, Map s) {
     def p = []
-    if (!(doc.kind in ['ImageImport', 'VendorImageImport'])) p << "kind must be ImageImport (got ${doc.kind})"
+    if (doc.kind != 'ImageImport') p << "kind must be ImageImport (got ${doc.kind})"
     if (!(s.name ==~ /[a-z0-9][a-z0-9.-]*/)) p << "metadata.name must match ^[a-z0-9][a-z0-9.-]*\$"
     if (!(s.origin in ['vendor', 'internal'])) p << "spec.origin must be vendor or internal"
     if (!s.sourceRef) p << "spec.source.ref is required"
@@ -120,16 +114,16 @@ private List validateSpec(Map doc, Map s) {
     if (!s.auid) p << "metadata.auid is required"
     if (!(s.category in CATEGORIES)) p << "metadata.category must be one of ${CATEGORIES}"
     if (s.origin == 'vendor' && s.harden) p << "vendor images are never hardened: spec.harden must be false"
-    if (!(s.platforms instanceof List) || !s.platforms) p << "spec.platforms must be a non-empty list"
+    if (!(s.platforms instanceof List) || !s.platforms) p << "spec.platforms is required (e.g. [linux/amd64])"
     return p
 }
 
 // Checked once the checkout values are merged in.
-private List validateLabels(Map s, Map gl, String ourVendor) {
+private List validateLabels(Map s, Map gl, String org) {
     def p = []
     if (!gl.description) p << "labels.description is mandatory"
-    if (!gl.source) p << "labels.source is mandatory and the job has no GIT_URL to take it from"
     if (!gl.vendor) p << "labels.vendor is mandatory"
-    if (s.origin == 'vendor' && gl.vendor == ourVendor) p << "vendor image: labels.vendor must name the third party, not ${ourVendor}"
+    if (!gl.source) p << "labels.source is mandatory and the job has no GIT_URL to take it from"
+    if (s.origin == 'vendor' && org && gl.vendor == org) p << "vendor image: labels.vendor must name the third party, not ${org}"
     return p
 }

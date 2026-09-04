@@ -76,8 +76,8 @@ spec:
 
 | `origin` | hardening | `labels.vendor` | category |
 |---|---|---|---|
-| `vendor` | never (`harden: true` rejected by schema and step) | must name the third party | author's choice, `OTHER` by default |
-| `internal` | optional (`harden: true` → wrap-build, `hardenImage`) | defaults to ours | author's choice |
+| `vendor` | never (`harden: true` rejected by schema and step) | must name the third party | author's choice |
+| `internal` | optional (`harden: true` → wrap-build, `hardenImage`) | our organisation, written by the author | author's choice |
 
 Derived by the pipeline, never written by the author: `base.name` (source ref), `base.digest`
 (resolved digest), `created` (import time). Taken from the Jenkins checkout unless the spec sets
@@ -109,8 +109,9 @@ supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml')   // or a directory of s
 ```
 `supplyChainPipeline` brings the agent, credentials, registry logins, per-image lock, the stage
 chain (`acquire -> [harden] -> provenance -> scan -> gate -> publish -> sign`) and failure mail.
-Configuration comes from the library's bundled defaults, overridable by `config/registry.yaml` +
-`config/defaults.yaml` in the workspace, env `SC_CONFIG`, env `REGISTRY`/`REPO`.
+The library's config holds platform values only (registry, organisation name, pull-through map,
+Supply Chain API); the consumer supplies `credentialsId`, `notifyEmail`, labels and platforms, and
+nothing is defaulted for them.
 
 ## `harden: true` (internal images)
 

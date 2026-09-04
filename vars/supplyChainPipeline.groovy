@@ -1,13 +1,16 @@
 // Consumer entry point. A team's Jenkinsfile is:
 //     @Library('supply-chain-lib@v1') _
-//     supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'payments-artifactory')
+//     supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'payments-artifactory',
+//                         notifyEmail: 'payments-team@acme.example')
 // spec is one YAML file or a directory of them. credentialsId names a Jenkins username/password
-// credential with write access to the destination repo; it defaults to credentials.docker in the config.
+// credential that reads the source and writes the destination repo. notifyEmail is optional.
 def call(Map args = [:]) {
     def specPath = (args.spec ?: 'supplychain.yaml').toString()
+    def credId = (args.credentialsId ?: '').toString()
+    if (!credId) error "supplyChainPipeline: credentialsId is required (a Jenkins username/password credential for Artifactory)"
     def agentLabel = (args.agentLabel ?: 'buildkit').toString()
+    def notifyEmail = args.notifyEmail ? args.notifyEmail.toString() : null
     def context = (args.context ?: "Supply chain (${specPath})").toString()
-    def credId = (args.credentialsId ?: scConfig().credentials?.docker ?: 'artifactory-docker').toString()
     pipeline {
         agent { label agentLabel }
         options { disableConcurrentBuilds(); timestamps() }
@@ -28,6 +31,6 @@ def call(Map args = [:]) {
                 }
             }
         }
-        post { failure { scNotify(context) } }
+        post { failure { scNotify(context, notifyEmail) } }
     }
 }

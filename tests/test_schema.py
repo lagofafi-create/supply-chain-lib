@@ -32,9 +32,11 @@ def test_auid_and_destination_are_required():
     d = copy.deepcopy(_load("jboss-eap.yaml")); del d["spec"]["destination"]; _invalid(d)
 
 
-def test_labels_may_be_left_to_detection():
-    d = copy.deepcopy(_load("internal-app.yaml")); d["spec"].pop("labels")
-    jsonschema.validate(d, SCHEMA)
+def test_consumer_must_provide_labels_and_platforms():
+    d = copy.deepcopy(_load("internal-app.yaml")); del d["spec"]["labels"]["vendor"]; _invalid(d)
+    d = copy.deepcopy(_load("internal-app.yaml")); del d["spec"]["labels"]["description"]; _invalid(d)
+    d = copy.deepcopy(_load("internal-app.yaml")); d["spec"]["platforms"] = []; _invalid(d)
+    d = copy.deepcopy(_load("internal-app.yaml")); del d["spec"]["platforms"]; _invalid(d)
 
 
 def test_vendor_cannot_be_hardened_but_internal_can():

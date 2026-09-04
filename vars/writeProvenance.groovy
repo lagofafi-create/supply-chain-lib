@@ -1,6 +1,7 @@
 // Per image provenance.json, the input the Supply Chain CLI turns into the SLSA predicate.
 // Shape: resources/slsa/provenance.input.example.json and provenance.input.import.example.json.
-// Every required field must be present, and in production none may hold a local fallback.
+// Every required field must be present (ownerTeam comes from the producer), and in production
+// none may hold a local fallback.
 def call(Map rec) {
     def json = [
         imageSource: [
@@ -21,7 +22,7 @@ def call(Map rec) {
             digest   : rec.imageDigest,
         ],
         customMetadata: [
-            owner_team  : (scConfig().defaults?.labels?.authors ?: 'devsecops-cd-team'),
+            owner_team  : (rec.ownerTeam ?: ''),
             build_number: (env.BUILD_NUMBER ?: '0'),
             environment : (env.CA_SOURCE == 'dev-fake' ? 'dev' : 'production'),
         ],

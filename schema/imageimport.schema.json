@@ -50,7 +50,9 @@
    "required": [
     "origin",
     "source",
-    "destination"
+    "destination",
+    "platforms",
+    "labels"
    ],
    "properties": {
     "origin": {
@@ -111,11 +113,12 @@
      "type": "array",
      "items": {
       "type": "string"
-     }
+     },
+     "minItems": 1
     },
     "labels": {
      "type": "object",
-     "description": "governance labels. description is mandatory; source, revision and version are read from the image's OCI labels when present and any value here overrides them; vendor is mandatory for origin: vendor and defaults to ours for internal. Optional: authors, documentation, licenses.",
+     "description": "governance labels. vendor and description are mandatory; source and revision default to the Jenkins checkout and any value here overrides them; authors, documentation, licenses, version are optional. Nothing is defaulted by the library.",
      "properties": {
       "vendor": {
        "type": "string"
@@ -141,7 +144,11 @@
       "revision": {
        "type": "string"
       }
-     }
+     },
+     "required": [
+      "vendor",
+      "description"
+     ]
     }
    },
    "if": {

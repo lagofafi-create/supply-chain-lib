@@ -27,8 +27,10 @@ Add two files to your repository.
 `Jenkinsfile`:
 ```groovy
 @Library('supply-chain-lib@v1') _
-supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'my-team-artifactory')
+supplyChainPipeline(spec: 'supplychain/jboss-eap.yaml', credentialsId: 'my-team-artifactory',
+                    notifyEmail: 'my-team@acme.example')
 ```
+`credentialsId` is required. `notifyEmail` is optional; without it a failure is only in the job log.
 
 `supplychain/jboss-eap.yaml`:
 ```yaml
@@ -77,13 +79,14 @@ To track several images, put one YAML per image in the directory and pass the di
 | `spec.prodEligible` | no | `true`: the image is meant for production. The gate applies the full release rules, the tags get `quality.status=released`, the image is signed and attested. `false`: only the labels are checked, the tags get `quality.status=dev`, and the image is published unsigned, so admission can never deploy it. Default `false` |
 | `spec.harden` | no | `true` (internal only): run the uniform hardening and flatten. Default `false` |
 | `spec.enabled` | no | `false`: the spec is skipped entirely, nothing runs, the tags already published stay as they are. A pause switch that keeps the file in place. Default `true` |
-| `spec.platforms` | no | platforms to publish. Default from config (`linux/amd64`) |
-| `spec.labels.vendor` | vendor: yes | the distributing entity. Internal images default to Acme |
+| `spec.platforms` | yes | platforms to publish, e.g. `[linux/amd64]` |
+| `spec.labels.vendor` | yes | the distributing entity: the third party for a vendor image, our organisation for an internal one |
 | `spec.labels.description` | yes | what the image is |
 | `spec.labels.source` | no | the repository the job runs from (`GIT_URL`) unless set here, e.g. a vendor's catalog page |
 | `spec.labels.revision` | no | the checkout commit (`GIT_COMMIT`) unless set here |
 | `spec.labels.version` | no | defaults to `spec.version` |
-| `spec.labels.authors`, `documentation`, `licenses` | no | optional governance labels |
+| `spec.labels.authors` | no | the owning team; also recorded as the owner in provenance (the AUID otherwise) |
+| `spec.labels.documentation`, `licenses` | no | optional governance labels |
 
 Three mandatory labels are filled by the pipeline, never by you: `base.name` is the source ref,
 `base.digest` the resolved digest, `created` the import time. Source and revision come from the
@@ -92,8 +95,9 @@ that is your application repository, which is exactly what provenance should rec
 image set `labels.source` to the vendor's page if you prefer; whatever you set in the spec wins.
 
 The spec's shape is checked before anything touches a registry, the label set right after. An
-unknown `origin`, a vendor image with `harden: true`, a missing description, a vendor image whose
-`vendor` label says Acme, or no source anywhere all stop the job with the list of problems.
+unknown `origin`, a vendor image with `harden: true`, a missing vendor or description, missing
+platforms, a vendor image whose `vendor` label says Acme, or no source anywhere all stop the job
+with the list of problems.
 
 ## 4. What happens to your image
 
@@ -128,7 +132,7 @@ unknown `origin`, a vendor image with `harden: true`, a missing description, a v
 |---|---|---|
 | typical source | Red Hat, NGINX, a public or partner registry | your app pipeline's dev repo on Artifactory |
 | hardening | never; `harden: true` is rejected | optional |
-| `labels.vendor` | must name the third party | defaults to Acme |
+| `labels.vendor` | must name the third party | our organisation |
 | destination | usually `base-images-docker-local` under `vendor/` | your team's release repo |
 | gate | accepted without hardening | hardened by you, or accepted as is because the golden base it was built on is |
 
@@ -175,5 +179,9 @@ access to all of them.
 **How do I pin a version to a library release?** `@Library('supply-chain-lib@v1')` follows the v1
 line. Pin a tag (`@v1.2.0`) if you need to freeze behaviour.
 
-**Who do I contact?** The platform team address in the config (`defaults.notify.email`) receives
-your job's failure mails; use the same address for questions and for new pull-through remotes.
+**What does the library decide for me?** Only platform facts: the registry host, the pull-through
+remotes, the Supply Chain API. Your credential, labels, platforms and notify address are yours to
+write; the library never fills them in.
+
+**Who do I contact?** The platform team, for questions and for new pull-through remotes. Failure
+mails go to the `notifyEmail` you set on the pipeline.
