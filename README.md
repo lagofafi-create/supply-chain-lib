@@ -35,7 +35,7 @@ spec:
 ```
 
 What happens: the spec is validated (`auid`, `category`, `description`, and `vendor` for vendor
-images come from the spec; `source`, `revision`, `version` are read from the image's own labels
+images come from the spec; `source` and `revision` are the Jenkins checkout's URL and commit
 unless the spec overrides them; `base.name`, `base.digest`, `created` are derived) → the source is
 digest-pinned through the Artifactory pull-through map → copied exactly into
 `<destination.repo>/<path>:_built-<version>-<digest12>` → optionally hardened → provenance written

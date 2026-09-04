@@ -1,6 +1,6 @@
 // Bring an image we did not build into the supply chain: check the spec, pin the source digest,
-// read source, revision and version off the image labels (the spec overrides them), copy the
-// exact manifest into the destination repo's staging tag, build the record.
+// take source and revision from the Jenkins checkout (the spec overrides them), copy the exact
+// manifest into the destination repo's staging tag, build the record.
 // The legacy VendorImageImport kind is accepted and mapped.
 def call(Object spec) {
     def file = (spec instanceof Map && spec.doc) ? spec.file : null
@@ -19,11 +19,10 @@ def call(Object spec) {
     def version = s.version ?: tagOf(s.sourceRef)
     def digest12 = digest.split(':')[-1].take(12)
 
-    // what the image says about itself; the spec wins on every key it sets
-    def detected = detectedLabels(srcRef)
-    def gl = (c.defaults?.labels ?: [:]) + detected + s.labels
+    // source and revision are the repository this job runs from; the spec wins on every key it sets
+    def fromJenkins = [source: env.GIT_URL, revision: env.GIT_COMMIT].findAll { it.value }
+    def gl = (c.defaults?.labels ?: [:]) + fromJenkins + s.labels
     if (s.origin == 'internal' && !gl.vendor) gl.vendor = c.defaults?.labels?.vendor ?: 'Acme'
-    if (detected) echo "labels read from ${s.sourceRef}: ${detected.collect { k, v -> "${k}=${v}" }.join(', ')}"
     problems = validateLabels(s, gl, c.defaults?.labels?.vendor ?: 'Acme')
     if (problems) error "ImageImport '${s.name}' rejected:\n - ${problems.join('\n - ')}"
 
@@ -69,7 +68,7 @@ def call(Object spec) {
         workflow     : (file ?: 'Jenkinsfile'),
         baseImage    : [kind: 'imported-image', origin: s.origin, variant: 'imported'],
         importInfo   : [origin: s.origin, sourceRef: s.sourceRef, resolvedFrom: srcTagRef, sourceDigest: digest,
-                        sourceRepo: gl.source, sourceRevision: (gl.revision ?: ''), detectedLabels: detected.keySet() as List,
+                        sourceRepo: gl.source, sourceRevision: (gl.revision ?: ''),
                         importedBy: (env.BUILD_URL ?: 'local'), harden: s.harden],
         workdir      : workdir, stagingRef: stagingRef, resolved: version, serial: digest12,
         baseDigest   : digest, imageDigest: digest, skipped: false,
@@ -82,21 +81,6 @@ private static String tagOf(String ref) {
     return last.contains(':') ? last.split(':')[-1] : ''
 }
 
-// source, revision and version from the image's OCI labels. Inherited base image labels show up
-// here too, which is why the log prints them and the spec can override.
-private Map detectedLabels(String ref) {
-    def txt = sh(script: "docker buildx imagetools inspect ${ref} --format '{{json .Image}}' 2>/dev/null || true", returnStdout: true).trim()
-    if (!txt) return [:]
-    def img = readJSON(text: txt)
-    def cfg = img.config != null ? img : img.values().find { it instanceof Map && it.config != null }
-    def all = cfg?.config?.Labels ?: [:]
-    def out = [:]
-    ['source', 'revision', 'version'].each { k ->
-        def v = all["org.opencontainers.image.${k}"]
-        if (v) out[k] = v
-    }
-    return out
-}
 
 private Map normalise(Map doc) {
     def c = scConfig()
@@ -140,11 +124,11 @@ private List validateSpec(Map doc, Map s) {
     return p
 }
 
-// Checked once the image labels are known: spec values first, then what the image carries.
+// Checked once the checkout values are merged in.
 private List validateLabels(Map s, Map gl, String ourVendor) {
     def p = []
     if (!gl.description) p << "labels.description is mandatory"
-    if (!gl.source) p << "labels.source is mandatory and the image carries no org.opencontainers.image.source label"
+    if (!gl.source) p << "labels.source is mandatory and the job has no GIT_URL to take it from"
     if (!gl.vendor) p << "labels.vendor is mandatory"
     if (s.origin == 'vendor' && gl.vendor == ourVendor) p << "vendor image: labels.vendor must name the third party, not ${ourVendor}"
     return p

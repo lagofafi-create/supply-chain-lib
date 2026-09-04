@@ -80,25 +80,25 @@ To track several images, put one YAML per image in the directory and pass the di
 | `spec.platforms` | no | platforms to publish. Default from config (`linux/amd64`) |
 | `spec.labels.vendor` | vendor: yes | the distributing entity. Internal images default to Acme |
 | `spec.labels.description` | yes | what the image is |
-| `spec.labels.source` | if the image has none | URL of the source. Read from the image's `org.opencontainers.image.source` label when present |
-| `spec.labels.revision`, `version` | no | read from the image's labels when present; set them here to override |
+| `spec.labels.source` | no | the repository the job runs from (`GIT_URL`) unless set here, e.g. a vendor's catalog page |
+| `spec.labels.revision` | no | the checkout commit (`GIT_COMMIT`) unless set here |
+| `spec.labels.version` | no | defaults to `spec.version` |
 | `spec.labels.authors`, `documentation`, `licenses` | no | optional governance labels |
 
 Three mandatory labels are filled by the pipeline, never by you: `base.name` is the source ref,
-`base.digest` the resolved digest, `created` the import time. Source, revision and version are read
-off the image itself; the job log prints what was found. Images built on a golden base inherit the
-base's labels, so if the log shows the base's source instead of yours, set `labels.source` and
-`labels.revision` in the spec and they win.
+`base.digest` the resolved digest, `created` the import time. Source and revision come from the
+repository the job runs from: the checkout URL and commit Jenkins provides. For an internal image
+that is your application repository, which is exactly what provenance should record. For a vendor
+image set `labels.source` to the vendor's page if you prefer; whatever you set in the spec wins.
 
-The spec's shape is checked before anything touches a registry; the label set is checked once the
-image's own labels are known. An unknown `origin`, a vendor image with `harden: true`, a missing
-description, a vendor image whose `vendor` label says Acme, or no source anywhere all stop the job
-with the list of problems.
+The spec's shape is checked before anything touches a registry, the label set right after. An
+unknown `origin`, a vendor image with `harden: true`, a missing description, a vendor image whose
+`vendor` label says Acme, or no source anywhere all stop the job with the list of problems.
 
 ## 4. What happens to your image
 
-1. **Acquire.** The source is resolved through Artifactory and pinned to a digest, its source,
-   revision and version labels are read. The exact manifest is copied into
+1. **Acquire.** The source is resolved through Artifactory and pinned to a digest. The exact
+   manifest is copied into
    `<destination.repo>/<path>:_built-<version>-<digest12>`, all platforms preserved. Nothing is
    rebuilt, nothing is relabelled; the governance labels travel with the record.
 2. **Harden** (internal images with `harden: true`). The uniform `harden.sh` runs on your image,

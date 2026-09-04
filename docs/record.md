@@ -67,8 +67,8 @@ spec:
   prodEligible: true
   harden: false                      # internal only (vendor + harden is rejected)
   enabled: true
-  labels:                            # description always; vendor for vendor images; source, revision,
-    vendor: "Red Hat"                #   version are read from the image labels unless set here
+  labels:                            # description always; vendor for vendor images; source and
+    vendor: "Red Hat"                #   revision default to the Jenkins checkout unless set here
     description: "JBoss EAP 7.4, imported, scanned, signed, not hardened"
     source: "https://catalog.redhat.com/software/containers/..."
     licenses: "..."                  # optional: authors, documentation, licenses
@@ -80,9 +80,8 @@ spec:
 | `internal` | optional (`harden: true` → wrap-build, `hardenImage`) | defaults to ours | author's choice |
 
 Derived by the pipeline, never written by the author: `base.name` (source ref), `base.digest`
-(resolved digest), `created` (import time). Read from the image's own OCI labels when present and
-overridable in the spec: `source`, `revision`, `version` (the job log lists what was detected;
-inherited base image labels show up there too, override them when they are wrong). After
+(resolved digest), `created` (import time). Taken from the Jenkins checkout unless the spec sets
+them: `source` (the repository URL) and `revision` (the commit). After
 `signImage`, `verifyPublished` asks the Supply Chain API to confirm the signature and the SLSA and
 SBOM attestations on the published digest (skipped while `api.enabled` is false). The staging tag is `_built-<version>-<digest12>`; the
 published tags are `<path>:<version>-<digest12>` (immutable) and `<path>:<version>` (floating).
